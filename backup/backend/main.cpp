@@ -36,30 +36,38 @@ void logBestilling(const std::string& valg) {
 }
 
 std::string hentBestillinger() {
-    std::ifstream file("bestillinger.txt");
-    std::stringstream buffer;
-    std::string line;
+    int fd = open("bestillinger.txt", O_RDONLY);
+    if (fd < 0) return "[]";
 
+    char buffer[8192];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytesRead <= 0) return "[]";
+
+    buffer[bytesRead] = '\0';
+    std::istringstream stream(buffer);
+    std::string line;
     std::vector<std::string> entries;
-    while (std::getline(file, line)) {
-        // Fjern komma hvis nødvendigt
+
+    while (std::getline(stream, line)) {
         if (!line.empty() && line.back() == ',') {
-            line.pop_back();
+            line.pop_back(); // Fjern komma
         }
         if (!line.empty()) {
             entries.push_back(line);
         }
     }
 
-    buffer << "[";
+    std::ostringstream json;
+    json << "[";
     for (size_t i = 0; i < entries.size(); ++i) {
-        buffer << entries[i];
+        json << entries[i];
         if (i != entries.size() - 1) {
-            buffer << ",";
+            json << ",";
         }
     }
-    buffer << "]";
-    return buffer.str();
+    json << "]";
+    return json.str();
 }
 
 
