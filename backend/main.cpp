@@ -42,7 +42,6 @@ std::string hentBestillinger() {
 
     std::vector<std::string> entries;
     while (std::getline(file, line)) {
-        // Fjern komma hvis nødvendigt
         if (!line.empty() && line.back() == ',') {
             line.pop_back();
         }
@@ -61,7 +60,6 @@ std::string hentBestillinger() {
     buffer << "]";
     return buffer.str();
 }
-
 
 // Filbaseret tilstandshåndtering
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
@@ -82,7 +80,6 @@ int main() {
     socklen_t addrlen = sizeof(address);
     char buffer[30000] = {0};
 
-    // Opret socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("Socket fejl");
         exit(EXIT_FAILURE);
@@ -92,11 +89,11 @@ int main() {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    // Bind og lyt
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("Bind fejl");
         exit(EXIT_FAILURE);
     }
+
     if (listen(server_fd, 10) < 0) {
         perror("Lyt fejl");
         exit(EXIT_FAILURE);
@@ -110,7 +107,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        long valread = read(new_socket, buffer, 30000);
+        [[maybe_unused]] long valread = read(new_socket, buffer, 30000);
         std::string request(buffer);
 
         std::string responseBody;
@@ -123,7 +120,7 @@ int main() {
                     gemtValg = gemtValg.substr(1, gemtValg.length() - 2);
                 }
                 skrivTilFil("valg.txt", gemtValg);
-                responseBody = "{\"status\"😕"Valg gemt\"}";
+                responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
         else if (request.find("GET /tjek-kort") != std::string::npos) {
@@ -141,18 +138,18 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                responseBody = "{\"status\"😕"OK\"}";
+                responseBody = "{\"status\":\"OK\"}";
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
             } else {
-                responseBody = "{\"error\"😕"Ugyldig anmodning\"}";
+                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         }
         else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
         }
         else {
-            responseBody = "{\"message\"😕"Kaffeautomat API\"}";
+            responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
         std::string httpResponse =
