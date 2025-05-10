@@ -122,7 +122,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        long valread = read(new_socket, buffer, 30000);
+        read(new_socket, buffer, 30000); // læsning uden valread-advarsel
         std::string request(buffer);
         std::string responseBody;
 
