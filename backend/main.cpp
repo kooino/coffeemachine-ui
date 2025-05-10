@@ -11,12 +11,8 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_DEV "/dev/i2c-1"
-#define I2C_ADDR 0x08
 
 std::mutex logMutex;
 
@@ -93,28 +89,6 @@ std::string hentBestillinger() {
     return json.str();
 }
 
-std::string læsFraArduinoViaI2C() {
-    int file = open(I2C_DEV, O_RDWR);
-    if (file < 0) return "{\"error\":\"I2C open fejlede\"}";
-
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        close(file);
-        return "{\"error\":\"I2C ioctl fejlede\"}";
-    }
-
-    char buf[1];
-    if (read(file, buf, 1) != 1) {
-        close(file);
-        return "{\"error\":\"I2C read fejlede\"}";
-    }
-
-    close(file);
-    int status = buf[0];
-    std::ostringstream oss;
-    oss << "{\"arduino_status\": " << status << "}";
-    return oss.str();
-}
-
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -165,7 +139,9 @@ int main() {
         }
         else if (request.find("GET /tjek-kort") != std::string::npos) {
             size_t uidStart = request.find("uid=");
-            std::string uid = (uidStart != std::string::npos) ? request.substr(uidStart + 4, 9) : "";
+            std::string uid = (uidStart != std::string::npos) ?
+                request.substr(uidStart + 4, 9) : "";
+
             bool kortOK = checkKort(uid);
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
             responseBody = "{\"kortOK\":" + std::string(kortOK ? "true" : "false") + "}";
@@ -185,9 +161,6 @@ int main() {
         }
         else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
-        }
-        else if (request.find("GET /arduino-status") != std::string::npos) {
-            responseBody = læsFraArduinoViaI2C();
         }
         else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
