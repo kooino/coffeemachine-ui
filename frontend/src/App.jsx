@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import SuccessPopup from "./SuccessPopup";
+//import SuccessPopup from "./SuccessPopup";
 
 function App() {
   const [valg, setValg] = useState("");
