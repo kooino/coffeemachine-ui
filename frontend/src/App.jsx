@@ -1,33 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import SuccessPopup from "./SuccessPopup"; // korrekt sti
-import "./SuccessPopup.css"; // sørg for at denne linje findes i App.jsx også
+import SuccessPopup from "./SuccessPopup";
 
 function App() {
   const [valg, setValg] = useState("");
   const [uid, setUid] = useState("");
   const [kortOK, setKortOK] = useState(false);
-  const [bestillinger, setBestillinger] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
-
-  // Hent bestillinger ved opstart og efter ny bestilling
-  const hentBestillinger = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/bestillinger");
-      if (!res.ok) throw new Error("HTTP fejl ved bestillinger");
-      const data = await res.json();
-      setBestillinger(data.map((b) => `${b.valg} (${b.timestamp})`));
-    } catch (error) {
-      setFejl("Fejl ved hentning af bestillinger");
-    }
-  };
-
-  useEffect(() => {
-    hentBestillinger();
-  }, []);
 
   // Bekræft valg
   const confirmValg = async () => {
@@ -94,7 +76,6 @@ function App() {
 
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
-        hentBestillinger();
         setTimeout(() => setStatus(""), 4000);
       } else if (data.error) {
         setFejl(data.error);
@@ -185,17 +166,9 @@ function App() {
             <strong>{fejl}</strong>
           </div>
         )}
-
-        <h2>Bestillinger</h2>
-        <ul>
-          {bestillinger.map((b, index) => (
-            <li key={index}>{b}</li>
-          ))}
-        </ul>
       </div>
     </div>
   );
 }
 
 export default App;
- 
