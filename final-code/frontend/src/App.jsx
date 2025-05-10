@@ -57,7 +57,7 @@ function App() {
     setFejl("");
     try {
       const res = await fetch(
-        http://localhost:5000/tjek-kort?uid=${encodeURIComponent(uid)}
+        `http://localhost:5000/tjek-kort?uid=${encodeURIComponent(uid)}`
       );
       if (!res.ok) throw new Error("HTTP fejl ved kortscan");
       const data = await res.json();
