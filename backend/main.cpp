@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <sstream>
 #include <chrono>
 #include <ctime>
@@ -7,71 +6,113 @@
 #include <algorithm>
 #include <mutex>
 #include <iomanip>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
 #define PORT 5000
+#define I2C_DEV "/dev/i2c-1"
+#define I2C_ADDR 0x08
 
 std::mutex logMutex;
 
-// Simuler NFC-kortlæser
 bool checkKort(const std::string& uid) {
-    std::vector<std::string> godkendteUIDs = {"165267797", "123456789"};
+    std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
     return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
 
-// Logning
-void logBestilling(const std::string& valg) {
-    std::lock_guard<std::mutex> lock(logMutex);
-    std::ofstream logFile("bestillinger.txt", std::ios::app);
-
-    auto now = std::chrono::system_clock::now();
-    std::time_t tid = std::chrono::system_clock::to_time_t(now);
-    std::tm* now_tm = std::localtime(&tid);
-
-    logFile << "{ \"valg\": \"" << valg << "\", \"timestamp\": \""
-            << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
-}
-
-std::string hentBestillinger() {
-    std::ifstream file("bestillinger.txt");
-    std::stringstream buffer;
-    std::string line;
-
-    std::vector<std::string> entries;
-    while (std::getline(file, line)) {
-        if (!line.empty() && line.back() == ',') {
-            line.pop_back();
-        }
-        if (!line.empty()) {
-            entries.push_back(line);
-        }
-    }
-
-    buffer << "[";
-    for (size_t i = 0; i < entries.size(); ++i) {
-        buffer << entries[i];
-        if (i != entries.size() - 1) {
-            buffer << ",";
-        }
-    }
-    buffer << "]";
-    return buffer.str();
-}
-
-// Filbaseret tilstandshåndtering
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
-    std::ofstream f(filnavn);
-    f << data;
+    int fd = open(filnavn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd >= 0) {
+        write(fd, data.c_str(), data.size());
+        close(fd);
+    }
 }
 
 std::string læsFraFil(const std::string& filnavn) {
-    std::ifstream f(filnavn);
-    std::string content;
-    std::getline(f, content);
-    return content;
+    int fd = open(filnavn.c_str(), O_RDONLY);
+    if (fd < 0) return "";
+    char buffer[1024];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        return std::string(buffer);
+    }
+    return "";
+}
+
+void logBestilling(const std::string& valg) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    int fd = open("bestillinger.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd != -1) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t tid = std::chrono::system_clock::to_time_t(now);
+        std::tm* now_tm = std::localtime(&tid);
+
+        std::ostringstream oss;
+        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \""
+            << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
+
+        std::string logEntry = oss.str();
+        write(fd, logEntry.c_str(), logEntry.length());
+        close(fd);
+    }
+}
+
+std::string hentBestillinger() {
+    int fd = open("bestillinger.txt", O_RDONLY);
+    if (fd < 0) return "[]";
+
+    char buffer[8192];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytesRead <= 0) return "[]";
+
+    buffer[bytesRead] = '\0';
+    std::istringstream stream(buffer);
+    std::string line;
+    std::vector<std::string> entries;
+
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == ',') line.pop_back();
+        if (!line.empty()) entries.push_back(line);
+    }
+
+    std::ostringstream json;
+    json << "[";
+    for (size_t i = 0; i < entries.size(); ++i) {
+        json << entries[i];
+        if (i != entries.size() - 1) json << ",";
+    }
+    json << "]";
+    return json.str();
+}
+
+std::string læsFraArduinoViaI2C() {
+    int file = open(I2C_DEV, O_RDWR);
+    if (file < 0) return "{\"error\":\"I2C open fejlede\"}";
+
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+        close(file);
+        return "{\"error\":\"I2C ioctl fejlede\"}";
+    }
+
+    char buf[1];
+    if (read(file, buf, 1) != 1) {
+        close(file);
+        return "{\"error\":\"I2C read fejlede\"}";
+    }
+
+    close(file);
+    int status = buf[0];
+    std::ostringstream oss;
+    oss << "{\"arduino_status\": " << status << "}";
+    return oss.str();
 }
 
 int main() {
@@ -89,7 +130,7 @@ int main() {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         perror("Bind fejl");
         exit(EXIT_FAILURE);
     }
@@ -99,17 +140,16 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "✅ Server kører på http://localhost:" << PORT << "\n";
+    std::cout << "✅ Server kører på http://localhost:" << PORT << std::endl;
 
     while (true) {
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen)) < 0) {
+        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
             perror("Accept fejl");
             exit(EXIT_FAILURE);
         }
 
-        [[maybe_unused]] long valread = read(new_socket, buffer, 30000);
+        long valread = read(new_socket, buffer, 30000);
         std::string request(buffer);
-
         std::string responseBody;
 
         if (request.find("POST /gem-valg") != std::string::npos) {
@@ -125,9 +165,7 @@ int main() {
         }
         else if (request.find("GET /tjek-kort") != std::string::npos) {
             size_t uidStart = request.find("uid=");
-            std::string uid = (uidStart != std::string::npos) ?
-                request.substr(uidStart + 4, 9) : "";
-
+            std::string uid = (uidStart != std::string::npos) ? request.substr(uidStart + 4, 9) : "";
             bool kortOK = checkKort(uid);
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
             responseBody = "{\"kortOK\":" + std::string(kortOK ? "true" : "false") + "}";
@@ -147,6 +185,9 @@ int main() {
         }
         else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
+        }
+        else if (request.find("GET /arduino-status") != std::string::npos) {
+            responseBody = læsFraArduinoViaI2C();
         }
         else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
