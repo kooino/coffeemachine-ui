@@ -18,7 +18,7 @@ function App() {
       const res = await fetch("http://localhost:5000/bestillinger");
       if (!res.ok) throw new Error("HTTP fejl ved bestillinger");
       const data = await res.json();
-      setBestillinger(data.map((b) => ${b.valg} (${b.timestamp})));
+      setBestillinger(data.map((b) => `${b.valg} (${b.timestamp})`));
     } catch (error) {
       setFejl("Fejl ved hentning af bestillinger");
     }
