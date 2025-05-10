@@ -1,15 +1,22 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./SuccessPopup.css";
 
 const SuccessPopup = ({ message, onClose }) => {
+  const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => setFadeOut(true), 2000);     // start fade
+    const timer2 = setTimeout(onClose, 2800);                    // remove from DOM
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [onClose]);
+
   return (
-    <div className="popup" role="alert">
-      <div className="popup-content">
-        <span className="popup-message">{message}</span>
-        <button onClick={onClose} className="popup-close-btn" aria-label="Luk popup">
-          Luk
-        </button>
-      </div>
+    <div className={`popup ${fadeOut ? "fade-out" : ""}`}>
+      <span>{message}</span>
     </div>
   );
 };
