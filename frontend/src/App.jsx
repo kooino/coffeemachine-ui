@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-//import SuccessPopup from "./SuccessPopup";
+import SuccessPopup from "./SuccessPopup"; // korrekt sti
+import "./SuccessPopup.css"; // sørg for at denne linje findes i App.jsx også
 
 function App() {
   const [valg, setValg] = useState("");
