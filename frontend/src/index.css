@@ -2,11 +2,9 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,6 +15,7 @@ body, html {
   margin: 0;
   padding: 0;
   height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -24,65 +23,78 @@ body, html {
 
 #root {
   width: 100%;
-  max-width: 600px;
-  padding: 1rem;
+  max-width: 1200px;
+  padding: 2rem;
 }
 
 .container {
   background: #ffffff;
   color: #000;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
   width: 100%;
+  min-height: 70vh;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Inputs og knapper */
+input, select, button {
+  width: 100%;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  padding: 0.8rem;
+  box-sizing: border-box;
 }
 
 h1 {
-  font-size: 2em;
-  line-height: 1.2;
+  font-size: 3rem;
   margin-bottom: 1rem;
+  text-align: center;
+}
+
+h2 {
+  font-size: 1.8rem;
+  margin-top: 2rem;
+}
+
+p, label {
+  font-size: 1.1rem;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
   background-color: #1a1a1a;
   color: white;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
+button:hover {
+  background-color: #333;
+}
+
+/* Tilføj logo (valgfrit) */
+.logo {
+  display: block;
+  margin: 0 auto 1.5rem auto;
+  max-width: 200px;
+}
+
+/* Responsivt design */
+@media (max-width: 768px) {
   .container {
-    background: #ffffff;
-    color: #000;
+    padding: 1.5rem;
   }
-  button {
-    background-color: #f9f9f9;
-    color: #000;
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  input, select, button {
+    font-size: 1rem;
   }
 }
