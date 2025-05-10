@@ -1,0 +1,33 @@
+.popup {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #e0ffe0;
+    border: 2px solid #4caf50;
+    padding: 16px 24px;
+    border-radius: 12px;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-family: sans-serif;
+  }
+  
+  .popup-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .popup-content button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  .popup-content button:hover {
+    background-color: #45a049;
+  }
