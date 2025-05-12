@@ -11,10 +11,13 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
 #define PORT 5000
 
 std::mutex logMutex;
+std::string gemtValg;
 
 bool checkKort(const std::string& uid) {
     std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
@@ -89,6 +92,21 @@ std::string hentBestillinger() {
     return json.str();
 }
 
+void sendI2CCommand(const std::string& cmd) {
+    int file;
+    const char *filename = "/dev/i2c-1";
+    int addr = 0x08;
+
+    if ((file = open(filename, O_RDWR)) < 0) return;
+    if (ioctl(file, I2C_SLAVE, addr) < 0) {
+        close(file);
+        return;
+    }
+
+    write(file, cmd.c_str(), cmd.size());
+    close(file);
+}
+
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -122,18 +140,28 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        read(new_socket, buffer, 30000); // læsning uden valread-advarsel
+        read(new_socket, buffer, 30000);
         std::string request(buffer);
         std::string responseBody;
 
         if (request.find("POST /gem-valg") != std::string::npos) {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
-                std::string gemtValg = request.substr(bodyPos + 4);
+                gemtValg = request.substr(bodyPos + 4);
                 if (gemtValg.front() == '"' && gemtValg.back() == '"') {
                     gemtValg = gemtValg.substr(1, gemtValg.length() - 2);
                 }
                 skrivTilFil("valg.txt", gemtValg);
+
+                // Send mode til Arduino
+                if (gemtValg == "Te") {
+                    sendI2CCommand("mode:1");
+                } else if (gemtValg == "Lille kaffe") {
+                    sendI2CCommand("mode:2");
+                } else if (gemtValg == "Stor kaffe") {
+                    sendI2CCommand("mode:3");
+                }
+
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
@@ -152,6 +180,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
+                sendI2CCommand("start");
                 responseBody = "{\"status\":\"OK\"}";
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
