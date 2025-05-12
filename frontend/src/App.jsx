@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
@@ -46,7 +46,6 @@ function App() {
       const data = await res.json();
       setKortOK(data.kortOK);
       if (!data.kortOK) setFejl("Kort ugyldigt!");
-      else setFejl("");
     } catch (error) {
       setFejl("Fejl ved scanning af kort!");
     }
@@ -68,9 +67,7 @@ function App() {
         method: "POST",
       });
 
-      if (!res.ok) {
-        throw new Error("HTTP fejl ved bestilling");
-      }
+      if (!res.ok) throw new Error("HTTP fejl ved bestilling");
 
       const data = await res.json();
 
@@ -79,9 +76,6 @@ function App() {
         setTimeout(() => setStatus(""), 4000);
       } else if (data.error) {
         setFejl(data.error);
-        setStatus("");
-      } else {
-        setFejl("Uventet svar fra serveren");
         setStatus("");
       }
     } catch (error) {
