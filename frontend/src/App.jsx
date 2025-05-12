@@ -11,6 +11,8 @@ function App() {
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
 
+  const API_BASE = "http://localhost:5000";
+
   // Bekræft valg
   const confirmValg = async () => {
     if (!valg) {
@@ -19,14 +21,24 @@ function App() {
     }
     setFejl("");
     try {
-      const res = await fetch("http://localhost:5000/gem-valg", {
+      const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(valg),
       });
-      if (!res.ok) throw new Error("HTTP fejl ved valg");
-      setShowPopup(true);
+
+      if (!res.ok) throw new Error("HTTP-fejl ved valg");
+
+      const data = await res.json();
+      if (data.status === "Valg gemt") {
+        setShowPopup(true);
+      } else {
+        setFejl("Kunne ikke gemme valg.");
+      }
     } catch (error) {
+      console.error(error);
       setFejl("Fejl ved valg. Prøv igen!");
     }
   };
@@ -39,14 +51,17 @@ function App() {
     }
     setFejl("");
     try {
-      const res = await fetch(
-        `http://localhost:5000/tjek-kort?uid=${encodeURIComponent(uid)}`
-      );
-      if (!res.ok) throw new Error("HTTP fejl ved kortscan");
+      const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
+      if (!res.ok) throw new Error("HTTP-fejl ved kortscan");
+
       const data = await res.json();
       setKortOK(data.kortOK);
-      if (!data.kortOK) setFejl("Kort ugyldigt!");
+
+      if (!data.kortOK) {
+        setFejl("Kort ugyldigt!");
+      }
     } catch (error) {
+      console.error(error);
       setFejl("Fejl ved scanning af kort!");
     }
   };
@@ -63,11 +78,11 @@ function App() {
     setStatus("Brygger din drik ...");
 
     try {
-      const res = await fetch("http://localhost:5000/bestil", {
+      const res = await fetch(`${API_BASE}/bestil`, {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("HTTP fejl ved bestilling");
+      if (!res.ok) throw new Error("HTTP-fejl ved bestilling");
 
       const data = await res.json();
 
@@ -79,6 +94,7 @@ function App() {
         setStatus("");
       }
     } catch (error) {
+      console.error(error);
       setFejl("Fejl ved brygning!");
       setStatus("");
     } finally {
@@ -138,7 +154,7 @@ function App() {
             ? "✅ Kort godkendt!"
             : uid
             ? "❌ Kort ikke godkendt endnu!"
-            : "Indsæt UID og scan kortet"}
+            : "Indtast UID og scan kort"}
         </p>
 
         <h2>3. Start brygning</h2>
