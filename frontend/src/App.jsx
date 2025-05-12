@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -13,7 +14,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Bekræft valg
   const confirmValg = async () => {
     if (!valg) {
       setFejl("Vælg en drik først!");
@@ -24,9 +24,9 @@ function App() {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "text/plain",
         },
-        body: JSON.stringify(valg),
+        body: valg,
       });
 
       if (!res.ok) throw new Error("HTTP-fejl ved valg");
@@ -43,7 +43,6 @@ function App() {
     }
   };
 
-  // Scan kort
   const scanKort = async () => {
     if (!uid) {
       setFejl("Indtast UID først!");
@@ -66,7 +65,6 @@ function App() {
     }
   };
 
-  // Start brygning
   const startBrygning = async () => {
     if (!kortOK) {
       setFejl("Kort ikke godkendt!");
@@ -105,7 +103,6 @@ function App() {
     }
   };
 
-  // Afbryd bestilling
   const aflysBestilling = () => {
     setValg("");
     setKortOK(false);
