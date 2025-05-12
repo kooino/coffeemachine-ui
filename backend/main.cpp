@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>  // <-- VIGTIG: tilføjet for ifstream
 #include <sstream>
 #include <chrono>
 #include <ctime>
@@ -15,7 +16,7 @@
 #include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_ADDR 0x10 // Arduino I2C adresse
+#define I2C_ADDR 0x10
 
 std::mutex logMutex;
 
@@ -61,7 +62,7 @@ void logBestilling(const std::string& valg) {
 }
 
 std::string hentBestillinger() {
-    std::ifstream in("bestillinger.txt");
+    std::ifstream in("bestillinger.txt");  // <-- virker nu korrekt
     if (!in.is_open()) return "[]";
 
     std::ostringstream json;
@@ -96,7 +97,7 @@ void sendI2CCommand(const std::string& cmd) {
     }
     write(file, cmd.c_str(), cmd.length());
     close(file);
-    usleep(100000); // 100ms
+    usleep(100000);
 }
 
 std::string læsUIDFraI2C() {
