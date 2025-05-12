@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
@@ -14,21 +14,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/seneste-uid`);
-        const data = await res.json();
-        if (data.uid && data.uid !== uid) {
-          setUid(data.uid);
-        }
-      } catch (err) {
-        console.error("Fejl ved hentning af UID:", err);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [uid]);
-
   const confirmValg = async () => {
     if (!valg) {
       setFejl("Vælg en drik først!");
@@ -38,7 +23,9 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: {
+          "Content-Type": "text/plain",
+        },
         body: valg,
       });
 
