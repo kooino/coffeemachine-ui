@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
@@ -13,6 +13,21 @@ function App() {
   const [fejl, setFejl] = useState("");
 
   const API_BASE = "http://localhost:5000";
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/seneste-uid`);
+        const data = await res.json();
+        if (data.uid && data.uid !== "0" && data.uid !== uid) {
+          setUid(data.uid);
+        }
+      } catch (err) {
+        console.error("Fejl ved hentning af UID:", err);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [uid]);
 
   const confirmValg = async () => {
     if (!valg) {
@@ -45,7 +60,7 @@ function App() {
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("Indtast UID først!");
+      setFejl("UID ikke tilgængelig endnu!");
       return;
     }
     setFejl("");
@@ -138,9 +153,9 @@ function App() {
         <h2>2. Scan kort</h2>
         <input
           type="text"
-          placeholder="Indtast UID (f.eks. 165267797)"
+          placeholder="Indlæst UID vises her"
           value={uid}
-          onChange={(e) => setUid(e.target.value)}
+          readOnly
         />
         <br />
         <button onClick={scanKort}>Scan kort</button>
@@ -151,7 +166,7 @@ function App() {
             ? "✅ Kort godkendt!"
             : uid
             ? "❌ Kort ikke godkendt endnu!"
-            : "Indtast UID og scan kort"}
+            : "Indlæs kort..."}
         </p>
 
         <h2>3. Start brygning</h2>
