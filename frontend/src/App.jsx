@@ -14,7 +14,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Poller backend hvert sekund for at hente UID
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -157,7 +156,12 @@ function App() {
           placeholder="Indlæser UID..."
           value={uid}
           readOnly
-          style={{ color: uid ? "black" : "gray", fontWeight: "bold", fontSize: "1.2em", width: "300px" }}
+          style={{
+            color: uid ? "black" : "gray",
+            fontWeight: "bold",
+            fontSize: "1.2em",
+            width: "300px",
+          }}
         />
         <br />
         <button onClick={scanKort}>Scan kort</button>
