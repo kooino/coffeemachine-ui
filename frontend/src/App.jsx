@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -14,6 +13,7 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Hent UID automatisk hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -38,13 +38,11 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain",
-        },
+        headers: { "Content-Type": "text/plain" },
         body: valg,
       });
 
-      if (!res.ok) throw new Error("HTTP-fejl ved valg");
+      if (!res.ok) throw new Error("Fejl ved valg");
 
       const data = await res.json();
       if (data.status === "Valg gemt") {
@@ -54,29 +52,28 @@ function App() {
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved valg. Prøv igen!");
+      setFejl("Fejl ved valg. Prøv igen.");
     }
   };
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("UID ikke tilgængelig endnu!");
+      setFejl("Intet UID fundet endnu.");
       return;
     }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
-      if (!res.ok) throw new Error("HTTP-fejl ved kortscan");
+      if (!res.ok) throw new Error("Fejl ved kortscan");
 
       const data = await res.json();
       setKortOK(data.kortOK);
-
       if (!data.kortOK) {
-        setFejl("Kort ugyldigt!");
+        setFejl("Kort ugyldigt.");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved scanning af kort!");
+      setFejl("Fejl under kortscanning.");
     }
   };
 
@@ -95,10 +92,9 @@ function App() {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("HTTP-fejl ved bestilling");
+      if (!res.ok) throw new Error("Fejl ved bestilling");
 
       const data = await res.json();
-
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
@@ -108,7 +104,7 @@ function App() {
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved brygning!");
+      setFejl("Fejl ved brygning.");
       setStatus("");
     } finally {
       setValg("");
@@ -131,7 +127,7 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-        <h1>☕ Kaffeautomat ☕</h1>
+        <h1>☕ Kaffeautomat</h1>
 
         <h2>1. Vælg drik</h2>
         <select value={valg} onChange={(e) => setValg(e.target.value)}>
