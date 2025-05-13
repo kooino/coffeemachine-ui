@@ -3,8 +3,6 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
-#include <vector>
-#include <algorithm>
 #include <mutex>
 #include <iomanip>
 #include <fcntl.h>
@@ -39,7 +37,8 @@ std::string hentUIDFraArduino() {
     if (bytesRead > 0) {
         buffer[bytesRead] = '\0';
         std::string uid(buffer);
-        std::cout << "UID fra Arduino: " << uid << std::endl;
+        uid.erase(uid.find_last_not_of(" \n\r\t") + 1); // Trim trailing
+        std::cout << "UID fra Arduino: [" << uid << "]" << std::endl;
         return uid;
     }
     return "";
@@ -118,7 +117,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Backend kører på http://localhost:" << PORT << std::endl;
+    std::cout << "✅ Backend kører på http://localhost:" << PORT << std::endl;
 
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
