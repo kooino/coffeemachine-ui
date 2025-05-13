@@ -1,4 +1,3 @@
-// BACKEND: main.cpp
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -47,8 +46,7 @@ std::string hentUIDFraArduino() {
 }
 
 bool checkGodkendtUID(const std::string& uid) {
-    std::vector<std::string> godkendte = { "165267797", "1234567890" };
-    return std::find(godkendte.begin(), godkendte.end(), uid) != godkendte.end();
+    return uid == "165267797";
 }
 
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
