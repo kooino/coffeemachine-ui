@@ -20,10 +20,11 @@ function App() {
         const data = await res.json();
         if (data.uid && data.uid !== "0" && data.uid !== uid) {
           setUid(data.uid);
+          setKortOK(false); // nulstil kortstatus når nyt UID hentes
         }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
-        setFejl("Kan ikke hente UID fra server.");
+        setFejl("Fejl: kunne ikke hente UID fra backend.");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -44,7 +45,7 @@ function App() {
         body: valg,
       });
 
-      if (!res.ok) throw new Error("Fejl ved POST /gem-valg");
+      if (!res.ok) throw new Error("HTTP-fejl ved valg");
 
       const data = await res.json();
       if (data.status === "Valg gemt") {
@@ -60,19 +61,18 @@ function App() {
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("UID ikke tilgængeligt endnu.");
+      setFejl("Intet UID tilgængeligt endnu.");
       return;
     }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
-      if (!res.ok) throw new Error("Fejl ved GET /tjek-kort");
+      if (!res.ok) throw new Error("Fejl ved scanning");
 
       const data = await res.json();
       setKortOK(data.kortOK);
-
       if (!data.kortOK) {
-        setFejl("Kort ugyldigt.");
+        setFejl("Kort ikke godkendt. Adgang nægtet.");
       }
     } catch (error) {
       console.error(error);
@@ -82,7 +82,7 @@ function App() {
 
   const startBrygning = async () => {
     if (!kortOK) {
-      setFejl("Kort er ikke godkendt.");
+      setFejl("Kort ikke godkendt!");
       return;
     }
 
@@ -95,7 +95,7 @@ function App() {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("Fejl ved POST /bestil");
+      if (!res.ok) throw new Error("Fejl ved brygning");
 
       const data = await res.json();
       if (data.status === "OK") {
