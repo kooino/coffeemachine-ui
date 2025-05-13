@@ -22,7 +22,6 @@ std::mutex filMutex;
 std::string valgFil = "valg.txt";
 std::string kortFil = "kort.txt";
 
-// Læs UID fra Arduino
 std::string hentUIDFraArduino() {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -34,20 +33,20 @@ std::string hentUIDFraArduino() {
     }
 
     char buffer[32] = {0};
-    ssize_t bytes = read(file, buffer, sizeof(buffer) - 1);
+    ssize_t bytesRead = read(file, buffer, sizeof(buffer) - 1);
     close(file);
 
-    if (bytes > 0) {
-        buffer[bytes] = '\0';
+    if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
         std::string uid(buffer);
-        std::cout << "✅ UID fra Arduino: " << uid << std::endl;
+        std::cout << "UID fra Arduino: " << uid << std::endl;
         return uid;
     }
     return "";
 }
 
 bool checkGodkendtUID(const std::string& uid) {
-    std::vector<std::string> godkendte = { "3552077462", "1234567890" };
+    std::vector<std::string> godkendte = { "165267797", "1234567890" }; // Tilføj dit godkendte UID her
     return std::find(godkendte.begin(), godkendte.end(), uid) != godkendte.end();
 }
 
@@ -81,7 +80,6 @@ void logBestilling(const std::string& valg) {
     }
 }
 
-// Simuler kommando til I2C kaffeautomat (valgfri)
 void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -121,7 +119,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "✅ Backend kører på http://localhost:" << PORT << std::endl;
+    std::cout << "Backend kører på http://localhost:" << PORT << std::endl;
 
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -144,7 +142,6 @@ int main() {
                 std::string valg = request.substr(bodyPos + 4);
                 skrivTilFil(valgFil, valg);
 
-                // Simuler I2C kommando
                 if (valg == "Te") sendI2CCommand("mode:1");
                 else if (valg == "Lille kaffe") sendI2CCommand("mode:2");
                 else if (valg == "Stor kaffe") sendI2CCommand("mode:3");
@@ -170,7 +167,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand("s");  // Start kommando
+                sendI2CCommand("s");
                 skrivTilFil(kortFil, "0");
                 skrivTilFil(valgFil, "");
                 responseBody = "{\"status\":\"OK\"}";
