@@ -14,6 +14,7 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Poller backend hvert sekund for at hente UID
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -153,9 +154,10 @@ function App() {
         <h2>2. Scan kort</h2>
         <input
           type="text"
-          placeholder="Indlæst UID vises her"
+          placeholder="Indlæser UID..."
           value={uid}
           readOnly
+          style={{ color: uid ? "black" : "gray", fontWeight: "bold", fontSize: "1.2em", width: "300px" }}
         />
         <br />
         <button onClick={scanKort}>Scan kort</button>
@@ -166,7 +168,7 @@ function App() {
             ? "✅ Kort godkendt!"
             : uid
             ? "❌ Kort ikke godkendt endnu!"
-            : "Indlæs kort..."}
+            : "⌛ Venter på kort..."}
         </p>
 
         <h2>3. Start brygning</h2>
