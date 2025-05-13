@@ -13,7 +13,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Hent UID automatisk hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -24,6 +23,7 @@ function App() {
         }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
+        setFejl("Kan ikke hente UID fra server.");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -38,11 +38,13 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: {
+          "Content-Type": "text/plain",
+        },
         body: valg,
       });
 
-      if (!res.ok) throw new Error("Fejl ved valg");
+      if (!res.ok) throw new Error("Fejl ved POST /gem-valg");
 
       const data = await res.json();
       if (data.status === "Valg gemt") {
@@ -58,28 +60,29 @@ function App() {
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("Intet UID fundet endnu.");
+      setFejl("UID ikke tilgængeligt endnu.");
       return;
     }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
-      if (!res.ok) throw new Error("Fejl ved kortscan");
+      if (!res.ok) throw new Error("Fejl ved GET /tjek-kort");
 
       const data = await res.json();
       setKortOK(data.kortOK);
+
       if (!data.kortOK) {
         setFejl("Kort ugyldigt.");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl under kortscanning.");
+      setFejl("Fejl under scanning.");
     }
   };
 
   const startBrygning = async () => {
     if (!kortOK) {
-      setFejl("Kort ikke godkendt!");
+      setFejl("Kort er ikke godkendt.");
       return;
     }
 
@@ -92,7 +95,7 @@ function App() {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("Fejl ved bestilling");
+      if (!res.ok) throw new Error("Fejl ved POST /bestil");
 
       const data = await res.json();
       if (data.status === "OK") {
@@ -153,10 +156,10 @@ function App() {
           value={uid}
           readOnly
           style={{
-            color: uid ? "black" : "gray",
-            fontWeight: "bold",
             fontSize: "1.2em",
+            fontWeight: "bold",
             width: "300px",
+            color: uid ? "black" : "gray",
           }}
         />
         <br />
