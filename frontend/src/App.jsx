@@ -20,11 +20,11 @@ function App() {
         const data = await res.json();
         if (data.uid && data.uid !== "0" && data.uid !== uid) {
           setUid(data.uid);
-          setKortOK(false); // nulstil kortstatus når nyt UID hentes
+          setKortOK(false); // Nulstil kortstatus ved ny UID
         }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
-        setFejl("Fejl: kunne ikke hente UID fra backend.");
+        setFejl("Kan ikke hente UID fra backend.");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -61,22 +61,22 @@ function App() {
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("Intet UID tilgængeligt endnu.");
+      setFejl("Ingen UID tilgængelig endnu.");
       return;
     }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
-      if (!res.ok) throw new Error("Fejl ved scanning");
+      if (!res.ok) throw new Error("Fejl ved kortscan");
 
       const data = await res.json();
       setKortOK(data.kortOK);
       if (!data.kortOK) {
-        setFejl("Kort ikke godkendt. Adgang nægtet.");
+        setFejl("Kort ikke godkendt.");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl under scanning.");
+      setFejl("Fejl ved scanning af kort.");
     }
   };
 
@@ -95,7 +95,7 @@ function App() {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("Fejl ved brygning");
+      if (!res.ok) throw new Error("Fejl ved bestilling");
 
       const data = await res.json();
       if (data.status === "OK") {
