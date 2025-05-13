@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_ADDR 0x08
+#define I2C_ADDR 0x10  // <-- ændret til korrekt adresse
 
 std::mutex logMutex;
 std::string gemtValg;
@@ -116,6 +116,27 @@ void sendI2CCommand(const std::string& cmd) {
     usleep(100000);
 }
 
+std::string hentUIDFraArduino() {
+    const char* filename = "/dev/i2c-1";
+    int file = open(filename, O_RDWR);
+    if (file < 0) return "";
+
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+        close(file);
+        return "";
+    }
+
+    char buffer[32] = {0};
+    ssize_t bytes = read(file, buffer, sizeof(buffer) - 1);
+    close(file);
+
+    if (bytes > 0) {
+        buffer[bytes] = '\0';
+        return std::string(buffer);
+    }
+    return "";
+}
+
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -166,7 +187,6 @@ int main() {
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
-
         else if (request.find("GET /tjek-kort") != std::string::npos) {
             size_t uidStart = request.find("uid=");
             std::string uid = "";
@@ -179,7 +199,6 @@ int main() {
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
             responseBody = "{\"kortOK\":" + std::string(kortOK ? "true" : "false") + "}";
         }
-
         else if (request.find("POST /bestil") != std::string::npos) {
             std::string kortStatus = læsFraFil("kort.txt");
             std::string valg = læsFraFil("valg.txt");
@@ -194,11 +213,13 @@ int main() {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         }
-
+        else if (request.find("GET /seneste-uid") != std::string::npos) {
+            std::string uid = hentUIDFraArduino();
+            responseBody = "{\"uid\":\"" + uid + "\"}";
+        }
         else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
         }
-
         else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
