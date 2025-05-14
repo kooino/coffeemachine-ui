@@ -37,7 +37,7 @@ std::string hentUIDFraArduino() {
     if (bytesRead > 0) {
         buffer[bytesRead] = '\0';
         std::string uid(buffer);
-        uid.erase(uid.find_last_not_of(" \n\r\t") + 1); // Trim trailing
+        uid.erase(uid.find_last_not_of(" \n\r\t") + 1);
         std::cout << "UID fra Arduino: [" << uid << "]" << std::endl;
         return uid;
     }
