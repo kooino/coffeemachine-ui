@@ -8,6 +8,7 @@
 #define PN532_I2C_ADDR 0x24
 #define I2C_DEV "/dev/i2c-1"
 
+// Send kommando til PN532
 bool sendCommand(int file, const uint8_t* cmd, size_t len) {
     if (write(file, cmd, len) != (ssize_t)len) {
         perror("Fejl ved skrivning til PN532");
@@ -29,13 +30,13 @@ int main() {
         return 1;
     }
 
-    // ReadPassiveTarget command: læs MIFARE kort
+    // Kommando: Læs passivt kort (InListPassiveTarget)
     uint8_t readCardCommand[] = {
-        0x00,                   // Preamble
-        0x00, 0xFF, 0x04, 0xFC, // Length, checksum
-        0xD4, 0x4A, 0x01, 0x00, // InListPassiveTarget
-        0xE1,                   // Data checksum
-        0x00                    // Postamble
+        0x00,
+        0x00, 0xFF, 0x04, 0xFC, // længde + checksum
+        0xD4, 0x4A, 0x01, 0x00, // kommando + parametre
+        0xE1,                   // checksum
+        0x00                    // postamble
     };
 
     std::cout << "Venter på NFC-kort...\n";
@@ -48,28 +49,38 @@ int main() {
 
         usleep(100000); // Vent på svar
 
-        uint8_t buffer[32];
+        uint8_t buffer[64];
         ssize_t bytes = read(file, buffer, sizeof(buffer));
 
         if (bytes <= 0) {
             std::cerr << "Ingen svar fra PN532\n";
+            usleep(500000);
             continue;
         }
 
-        // Kig efter UID i svaret
+        // Kig efter D5 4B (svar på InListPassiveTarget)
         for (int i = 0; i < bytes - 6; ++i) {
             if (buffer[i] == 0xD5 && buffer[i + 1] == 0x4B) {
                 uint8_t uidLength = buffer[i + 5];
-                std::cout << "Kort læst. UID: ";
-                for (int j = 0; j < uidLength; ++j) {
-                    printf("%02X ", buffer[i + 6 + j]);
+
+                // Beregn decimal UID (kun hvis længde = 4)
+                if (uidLength == 4) {
+                    uint32_t uidDec = 0;
+                    for (int j = 0; j < 4; ++j) {
+                        uidDec <<= 8;
+                        uidDec |= buffer[i + 6 + j];
+                    }
+
+                    std::cout << uidDec << std::endl;
+                } else {
+                    std::cout << "[UID ikke 4 bytes – springer over]\n";
                 }
-                std::cout << std::endl;
+
                 break;
             }
         }
 
-        usleep(500000); // Søg hvert 0.5 sekund
+        usleep(1000000); // Scan hvert sekund
     }
 
     close(file);
