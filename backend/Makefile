@@ -1,6 +1,8 @@
+# Makefile til kaffeautomat backend med PN532 via libnfc
+
 CXX = g++
 CXXFLAGS = -Wall -std=c++17 -pthread
-TARGET = server
+TARGET = kaffeautomat
 SOURCES = main.cpp
 LIBS = -lnfc
 
