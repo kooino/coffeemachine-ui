@@ -1,6 +1,7 @@
 #include <nfc/nfc.h>
 #include <iostream>
 #include <iomanip>
+#include <unistd.h>  // For sleep()
 
 int main() {
     nfc_device *pnd = nullptr;
@@ -20,13 +21,18 @@ int main() {
     }
 
     if (nfc_initiator_init(pnd) < 0) {
+        std::cerr << "Fejl ved initiering som initiator" << std::endl;
         nfc_close(pnd);
         nfc_exit(context);
-        std::cerr << "Kunne ikke initialisere som initiator" << std::endl;
         return 1;
     }
 
     std::cout << "Venter på RFID/NFC kort..." << std::endl;
+
+    const nfc_modulation nmMifare = {
+        .nmt = NMT_ISO14443A,
+        .nbr = NBR_106,
+    };
 
     nfc_target nt;
     while (true) {
@@ -37,8 +43,6 @@ int main() {
                           << (int)nt.nti.nai.abtUid[i] << " ";
             }
             std::cout << std::endl;
-
-            // Vent lidt før næste læsning
             sleep(1);
         }
     }
