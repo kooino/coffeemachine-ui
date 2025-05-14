@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -17,6 +18,17 @@
 std::mutex filMutex;
 std::string valgFil = "valg.txt";
 std::string kortFil = "kort.txt";
+
+void logKortScan(const std::string& uid) {
+    std::ofstream fil("scanlog.txt", std::ios::app);
+    if (fil.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t tid = std::chrono::system_clock::to_time_t(now);
+        fil << "[" << std::put_time(std::localtime(&tid), "%Y-%m-%d %H:%M:%S")
+            << "] UID: " << uid << "\n";
+        fil.close();
+    }
+}
 
 std::string hentUIDFraPN532() {
     nfc_context *context;
@@ -53,6 +65,7 @@ std::string hentUIDFraPN532() {
             uid_int |= nt.nti.nai.abtUid[3];
 
             result = std::to_string(uid_int);
+            logKortScan(result);
         }
     }
 
@@ -62,7 +75,14 @@ std::string hentUIDFraPN532() {
 }
 
 bool checkGodkendtUID(const std::string& uid) {
-    return uid == "165267797";
+    std::ifstream fil("tilladte_uid.txt");
+    if (!fil.is_open()) return false;
+
+    std::string linje;
+    while (std::getline(fil, linje)) {
+        if (linje == uid) return true;
+    }
+    return false;
 }
 
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
@@ -156,6 +176,19 @@ int main() {
             bool godkendt = checkGodkendtUID(uid);
             skrivTilFil(kortFil, godkendt ? "1" : "0");
             responseBody = "{\"kortOK\":" + std::string(godkendt ? "true" : "false") + "}";
+        }
+        else if (request.find("POST /tilfoej-kort") != std::string::npos) {
+            size_t bodyPos = request.find("\r\n\r\n");
+            if (bodyPos != std::string::npos) {
+                std::string uid = request.substr(bodyPos + 4);
+                std::ofstream fil("tilladte_uid.txt", std::ios::app);
+                if (fil.is_open()) {
+                    fil << uid << "\n";
+                    responseBody = "{\"status\":\"Tilføjet\"}";
+                } else {
+                    responseBody = "{\"error\":\"Kunne ikke skrive til fil\"}";
+                }
+            }
         }
         else if (request.find("POST /bestil") != std::string::npos) {
             std::string kortStatus = laesFraFil(kortFil);
