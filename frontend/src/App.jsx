@@ -20,11 +20,11 @@ function App() {
         const data = await res.json();
         if (data.uid && data.uid !== "0" && data.uid !== uid) {
           setUid(data.uid);
-          setKortOK(false); // Nulstil kortstatus ved ny UID
+          setKortOK(false); // nulstil kortstatus ved nyt kort
         }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
-        setFejl("Kan ikke hente UID fra backend.");
+        setFejl("Fejl ved kommunikation med server.");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -39,13 +39,9 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain",
-        },
+        headers: { "Content-Type": "text/plain" },
         body: valg,
       });
-
-      if (!res.ok) throw new Error("HTTP-fejl ved valg");
 
       const data = await res.json();
       if (data.status === "Valg gemt") {
@@ -53,36 +49,34 @@ function App() {
       } else {
         setFejl("Kunne ikke gemme valg.");
       }
-    } catch (error) {
-      console.error(error);
-      setFejl("Fejl ved valg. Prøv igen.");
+    } catch (err) {
+      console.error(err);
+      setFejl("Fejl ved valg.");
     }
   };
 
   const scanKort = async () => {
     if (!uid) {
-      setFejl("Ingen UID tilgængelig endnu.");
+      setFejl("Ingen UID tilgængelig.");
       return;
     }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/tjek-kort?uid=${encodeURIComponent(uid)}`);
-      if (!res.ok) throw new Error("Fejl ved kortscan");
-
       const data = await res.json();
       setKortOK(data.kortOK);
       if (!data.kortOK) {
-        setFejl("Kort ikke godkendt.");
+        setFejl("Kortet er ikke godkendt.");
       }
-    } catch (error) {
-      console.error(error);
-      setFejl("Fejl ved scanning af kort.");
+    } catch (err) {
+      console.error(err);
+      setFejl("Fejl ved kortscanning.");
     }
   };
 
   const startBrygning = async () => {
     if (!kortOK) {
-      setFejl("Kort ikke godkendt!");
+      setFejl("Kort er ikke godkendt!");
       return;
     }
 
@@ -91,22 +85,18 @@ function App() {
     setStatus("Brygger din drik ...");
 
     try {
-      const res = await fetch(`${API_BASE}/bestil`, {
-        method: "POST",
-      });
-
-      if (!res.ok) throw new Error("Fejl ved bestilling");
-
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
+
       if (data.status === "OK") {
-        setStatus("☕ Din drik er klar! Tag din kop.");
+        setStatus("☕ Din drik er klar!");
         setTimeout(() => setStatus(""), 4000);
-      } else if (data.error) {
-        setFejl(data.error);
+      } else {
+        setFejl(data.error || "Ugyldig svar fra backend.");
         setStatus("");
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setFejl("Fejl ved brygning.");
       setStatus("");
     } finally {
@@ -152,7 +142,7 @@ function App() {
         <h2>2. Scan kort</h2>
         <input
           type="text"
-          placeholder="Indlæser UID..."
+          placeholder="UID vises her"
           value={uid}
           readOnly
           style={{
