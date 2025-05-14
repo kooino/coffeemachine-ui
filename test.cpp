@@ -5,7 +5,7 @@
 #include <sys/ioctl.h>
 #include <cstring>
 
-#define PN532_I2C_ADDR 0x24  // Eller brug 0x48, 0x24, 0x7B afhængigt af PN532-konfiguration
+#define PN532_I2C_ADDR 0x24
 #define I2C_DEV "/dev/i2c-1"
 
 bool sendCommand(int file, const uint8_t* cmd, size_t len) {
@@ -29,39 +29,48 @@ int main() {
         return 1;
     }
 
-    // Enkel kommando til at hente firmwareversion
-    uint8_t getFirmwareVersion[] = {
-        0x00,                   // I2C preamble
-        0x00, 0xFF, 0x02, 0xFE, // Length, length checksum
-        0xD4, 0x02,             // GetFirmware command
-        0x2A,                   // Checksum
+    // ReadPassiveTarget command: læs MIFARE kort
+    uint8_t readCardCommand[] = {
+        0x00,                   // Preamble
+        0x00, 0xFF, 0x04, 0xFC, // Length, checksum
+        0xD4, 0x4A, 0x01, 0x00, // InListPassiveTarget
+        0xE1,                   // Data checksum
         0x00                    // Postamble
     };
 
-    std::cout << "Sender GetFirmwareVersion...\n";
+    std::cout << "Venter på NFC-kort...\n";
 
-    if (!sendCommand(file, getFirmwareVersion, sizeof(getFirmwareVersion))) {
-        close(file);
-        return 1;
+    while (true) {
+        if (!sendCommand(file, readCardCommand, sizeof(readCardCommand))) {
+            close(file);
+            return 1;
+        }
+
+        usleep(100000); // Vent på svar
+
+        uint8_t buffer[32];
+        ssize_t bytes = read(file, buffer, sizeof(buffer));
+
+        if (bytes <= 0) {
+            std::cerr << "Ingen svar fra PN532\n";
+            continue;
+        }
+
+        // Kig efter UID i svaret
+        for (int i = 0; i < bytes - 6; ++i) {
+            if (buffer[i] == 0xD5 && buffer[i + 1] == 0x4B) {
+                uint8_t uidLength = buffer[i + 5];
+                std::cout << "Kort læst. UID: ";
+                for (int j = 0; j < uidLength; ++j) {
+                    printf("%02X ", buffer[i + 6 + j]);
+                }
+                std::cout << std::endl;
+                break;
+            }
+        }
+
+        usleep(500000); // Søg hvert 0.5 sekund
     }
-
-    // Vent på svar
-    usleep(100000);
-
-    uint8_t buffer[32];
-    ssize_t bytes = read(file, buffer, sizeof(buffer));
-
-    if (bytes <= 0) {
-        perror("Ingen svar fra PN532");
-        close(file);
-        return 1;
-    }
-
-    std::cout << "Svar modtaget (" << bytes << " bytes):\n";
-    for (int i = 0; i < bytes; ++i) {
-        printf("0x%02X ", buffer[i]);
-    }
-    std::cout << std::endl;
 
     close(file);
     return 0;
