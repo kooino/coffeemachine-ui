@@ -4,7 +4,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 
-#define PN532_I2C_ADDR 0x24
+#define PN532_I2C_ADDR 0x24     // Din bekræftede adresse fra i2cdetect
 #define I2C_DEV "/dev/i2c-1"
 
 bool sendCommand(int file, const uint8_t* cmd, size_t len) {
@@ -20,25 +20,24 @@ int main() {
         return 1;
     }
 
+    // PN532 kommando: InListPassiveTarget (læs kort)
     uint8_t cmd[] = {
-        0x00,
-        0x00, 0xFF, 0x04, 0xFC,
-        0xD4, 0x4A, 0x01, 0x00,
-        0xE1,
-        0x00
+        0x00,                   // Preamble
+        0x00, 0xFF, 0x04, 0xFC, // Length + Checksum
+        0xD4, 0x4A, 0x01, 0x00, // InListPassiveTarget
+        0xE1,                   // Data Checksum
+        0x00                    // Postamble
     };
 
-    if (!sendCommand(file, cmd, sizeof(cmd))) {
-        close(file);
-        return 1;
-    }
+    while (true) {
+        sendCommand(file, cmd, sizeof(cmd));
+        usleep(100000);  // 100ms
 
-    usleep(100000); // vent på svar
+        uint8_t buffer[64];
+        ssize_t bytes = read(file, buffer, sizeof(buffer));
+        if (bytes <= 0) continue;
 
-    uint8_t buffer[64];
-    ssize_t bytes = read(file, buffer, sizeof(buffer));
-
-    if (bytes > 0) {
+        // Kig efter svar: D5 4B
         for (int i = 0; i < bytes - 6; ++i) {
             if (buffer[i] == 0xD5 && buffer[i + 1] == 0x4B) {
                 uint8_t uidLength = buffer[i + 5];
@@ -49,10 +48,13 @@ int main() {
                         uidDec |= buffer[i + 6 + j];
                     }
                     std::cout << uidDec << std::endl;
-                    break;
+                    close(file);
+                    return 0;
                 }
             }
         }
+
+        usleep(300000); // 300ms pause før næste forsøg
     }
 
     close(file);
