@@ -1,5 +1,5 @@
 // =======================
-// ☕ React Frontend: App.js
+// ☕ React Frontend: App.js (komplet)
 // =======================
 
 import React, { useState, useEffect } from "react";
@@ -14,6 +14,7 @@ function App() {
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
+  const [nyUid, setNyUid] = useState("");
 
   const API_BASE = "http://localhost:5000";
 
@@ -24,7 +25,7 @@ function App() {
         const data = await res.json();
         if (data.uid && data.uid !== "0" && data.uid !== uid) {
           setUid(data.uid);
-          setKortOK(false); // nulstil kortstatus ved nyt kort
+          setKortOK(false);
         }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
@@ -33,6 +34,16 @@ function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, [uid]);
+
+  useEffect(() => {
+    if (kortOK) {
+      const timeout = setTimeout(() => {
+        setKortOK(false);
+        setUid("");
+      }, 30000);
+      return () => clearTimeout(timeout);
+    }
+  }, [kortOK]);
 
   const confirmValg = async () => {
     if (!valg) {
@@ -46,7 +57,6 @@ function App() {
         headers: { "Content-Type": "text/plain" },
         body: valg,
       });
-
       const data = await res.json();
       if (data.status === "Valg gemt") {
         setShowPopup(true);
@@ -83,7 +93,6 @@ function App() {
       setFejl("Kort er ikke godkendt!");
       return;
     }
-
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik ...");
@@ -91,7 +100,6 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
-
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar!");
         setTimeout(() => setStatus(""), 4000);
@@ -119,6 +127,26 @@ function App() {
     setBrygger(false);
     setStatus("");
     setFejl("");
+  };
+
+  const tilfoejKort = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/tilfoej-kort`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: nyUid,
+      });
+      const data = await res.json();
+      if (data.status === "Tilføjet") {
+        alert("✅ Kort tilføjet!");
+        setNyUid("");
+      } else {
+        alert("❌ Kunne ikke tilføje kort");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Fejl ved tilføjelse");
+    }
   };
 
   return (
@@ -175,6 +203,15 @@ function App() {
         <button onClick={aflysBestilling} className="cancel-btn">
           Afbryd
         </button>
+
+        <h2>4. Tilføj nyt kort (Admin)</h2>
+        <input
+          type="text"
+          placeholder="Indtast UID"
+          value={nyUid}
+          onChange={(e) => setNyUid(e.target.value)}
+        />
+        <button onClick={tilfoejKort}>Tilføj kort</button>
 
         {status && (
           <div className="status-box">
