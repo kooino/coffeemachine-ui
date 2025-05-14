@@ -1,7 +1,7 @@
 #include <nfc/nfc.h>
 #include <iostream>
 #include <iomanip>
-#include <unistd.h>  // <- nødvendig for sleep()
+#include <unistd.h>  // For sleep()
 
 int main() {
     nfc_context *context;
@@ -32,7 +32,6 @@ int main() {
 
     std::cout << "🔄 Venter på RFID-kort..." << std::endl;
 
-    // 🔧 Dette skal være med – deklaration af nmMifare
     const nfc_modulation nmMifare = {
         .nmt = NMT_ISO14443A,
         .nbr = NBR_106
@@ -41,19 +40,30 @@ int main() {
     nfc_target nt;
 
     while (true) {
-        // Læs kort, hvis et er til stede
         if (nfc_initiator_select_passive_target(pnd, nmMifare, nullptr, 0, &nt) > 0) {
-            std::cout << "✅ Kort fundet! UID: ";
+            std::cout << "✅ Kort fundet!" << std::endl;
+
+            // HEX-format
+            std::cout << "HEX: ";
             for (int i = 0; i < nt.nti.nai.szUidLen; ++i) {
                 std::cout << std::hex << std::setw(2) << std::setfill('0')
                           << static_cast<int>(nt.nti.nai.abtUid[i]) << " ";
             }
-            std::cout << std::dec << std::endl;
-            sleep(1);  // ← virker nu pga. unistd.h
+            std::cout << std::endl;
+
+            // DEC-format
+            std::cout << "DEC: ";
+            for (int i = 0; i < nt.nti.nai.szUidLen; ++i) {
+                std::cout << std::dec << static_cast<int>(nt.nti.nai.abtUid[i]);
+                if (i < nt.nti.nai.szUidLen - 1)
+                    std::cout << "-";
+            }
+            std::cout << std::endl << std::endl;
+
+            sleep(1);  // Vent 1 sekund før næste læsning
         }
     }
 
-    // Luk enheden korrekt (når programmet evt. stoppes)
     nfc_close(pnd);
     nfc_exit(context);
     return 0;
