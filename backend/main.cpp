@@ -10,38 +10,55 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
+#include <nfc/nfc.h>
 
 #define PORT 5000
-#define I2C_ADDR 0x24
 
 std::mutex filMutex;
 std::string valgFil = "valg.txt";
 std::string kortFil = "kort.txt";
 
-std::string hentUIDFraArduino() {
-    const char* filename = "/dev/i2c-1";
-    int file = open(filename, O_RDWR);
-    if (file < 0) return "";
+std::string hentUIDFraPN532() {
+    nfc_context *context;
+    nfc_device *pnd;
+    nfc_init(&context);
+    if (!context) return "";
 
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        close(file);
+    pnd = nfc_open(context, nullptr);
+    if (!pnd) {
+        nfc_exit(context);
         return "";
     }
 
-    char buffer[32] = {0};
-    ssize_t bytesRead = read(file, buffer, sizeof(buffer) - 1);
-    close(file);
-
-    if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        std::string uid(buffer);
-        uid.erase(uid.find_last_not_of(" \n\r\t") + 1);
-        std::cout << "UID fra Arduino: [" << uid << "]" << std::endl;
-        return uid;
+    if (nfc_initiator_init(pnd) < 0) {
+        nfc_close(pnd);
+        nfc_exit(context);
+        return "";
     }
-    return "";
+
+    const nfc_modulation nmMifare = {
+        .nmt = NMT_ISO14443A,
+        .nbr = NBR_106
+    };
+
+    nfc_target nt;
+    std::string result = "";
+
+    if (nfc_initiator_select_passive_target(pnd, nmMifare, nullptr, 0, &nt) > 0) {
+        if (nt.nti.nai.szUidLen == 4) {
+            uint32_t uid_int = 0;
+            uid_int |= (nt.nti.nai.abtUid[0] << 24);
+            uid_int |= (nt.nti.nai.abtUid[1] << 16);
+            uid_int |= (nt.nti.nai.abtUid[2] << 8);
+            uid_int |= nt.nti.nai.abtUid[3];
+
+            result = std::to_string(uid_int);
+        }
+    }
+
+    nfc_close(pnd);
+    nfc_exit(context);
+    return result;
 }
 
 bool checkGodkendtUID(const std::string& uid) {
@@ -57,7 +74,7 @@ void skrivTilFil(const std::string& filnavn, const std::string& data) {
     }
 }
 
-std::string læsFraFil(const std::string& filnavn) {
+std::string laesFraFil(const std::string& filnavn) {
     std::ifstream fil(filnavn);
     if (!fil.is_open()) return "";
     std::stringstream buffer;
@@ -76,20 +93,6 @@ void logBestilling(const std::string& valg) {
             << std::put_time(t, "%Y-%m-%d %H:%M:%S") << "\" },\n";
         fil.close();
     }
-}
-
-void sendI2CCommand(const std::string& cmd) {
-    const char* filename = "/dev/i2c-1";
-    int file = open(filename, O_RDWR);
-    if (file < 0) return;
-
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        close(file);
-        return;
-    }
-
-    write(file, cmd.c_str(), cmd.length());
-    close(file);
 }
 
 int main() {
@@ -131,7 +134,7 @@ int main() {
         std::string responseBody;
 
         if (request.find("GET /seneste-uid") != std::string::npos) {
-            std::string uid = hentUIDFraArduino();
+            std::string uid = hentUIDFraPN532();
             responseBody = "{\"uid\":\"" + uid + "\"}";
         }
         else if (request.find("POST /gem-valg") != std::string::npos) {
@@ -139,11 +142,6 @@ int main() {
             if (bodyPos != std::string::npos) {
                 std::string valg = request.substr(bodyPos + 4);
                 skrivTilFil(valgFil, valg);
-
-                if (valg == "Te") sendI2CCommand("mode:1");
-                else if (valg == "Lille kaffe") sendI2CCommand("mode:2");
-                else if (valg == "Stor kaffe") sendI2CCommand("mode:3");
-
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
@@ -160,21 +158,19 @@ int main() {
             responseBody = "{\"kortOK\":" + std::string(godkendt ? "true" : "false") + "}";
         }
         else if (request.find("POST /bestil") != std::string::npos) {
-            std::string kortStatus = læsFraFil(kortFil);
-            std::string valg = læsFraFil(valgFil);
+            std::string kortStatus = laesFraFil(kortFil);
+            std::string valg = laesFraFil(valgFil);
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand("s");
                 skrivTilFil(kortFil, "0");
                 skrivTilFil(valgFil, "");
                 responseBody = "{\"status\":\"OK\"}";
             } else {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
-        }
-        else {
-            responseBody = "{\"message\":\"Kaffeautomat backend kører\"}";
+        } else {
+            responseBody = "{\"message\":\"Kaffeautomat backend k\u00f8rer\"}";
         }
 
         std::string httpResponse =
