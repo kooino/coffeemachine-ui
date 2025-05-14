@@ -1,7 +1,7 @@
 #include <nfc/nfc.h>
 #include <iostream>
 #include <iomanip>
-#include <unistd.h>  // For sleep()
+#include <unistd.h>  // for sleep()
 
 int main() {
     nfc_context *context;
@@ -51,16 +51,27 @@ int main() {
             }
             std::cout << std::endl;
 
-            // DEC-format
-            std::cout << "DEC: ";
+            // DEC byte for byte
+            std::cout << "DEC (bytes): ";
             for (int i = 0; i < nt.nti.nai.szUidLen; ++i) {
                 std::cout << std::dec << static_cast<int>(nt.nti.nai.abtUid[i]);
                 if (i < nt.nti.nai.szUidLen - 1)
                     std::cout << "-";
             }
-            std::cout << std::endl << std::endl;
+            std::cout << std::endl;
 
-            sleep(1);  // Vent 1 sekund før næste læsning
+            // UID som samlet heltal (hvis det er 4 bytes)
+            if (nt.nti.nai.szUidLen == 4) {
+                uint32_t uid_int = 0;
+                uid_int |= (nt.nti.nai.abtUid[0] << 24);
+                uid_int |= (nt.nti.nai.abtUid[1] << 16);
+                uid_int |= (nt.nti.nai.abtUid[2] << 8);
+                uid_int |= nt.nti.nai.abtUid[3];
+                std::cout << "DEC (samlet int): " << uid_int << std::endl;
+            }
+
+            std::cout << std::endl;
+            sleep(1);  // Vent før næste læsning
         }
     }
 
