@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -std=c++17 -pthread
 TARGET = server
-SOURCES = main.cpp service.cpp
+SOURCES = main.cpp
 LIBS = -lnfc
 
 all: $(TARGET)
