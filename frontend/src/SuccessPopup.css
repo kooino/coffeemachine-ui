@@ -11,6 +11,8 @@
   opacity: 1;
   transition: opacity 0.8s ease-out;
   z-index: 999;
+  font-weight: bold;
+  font-size: 1rem;
 }
 
 .popup.fade-out {
