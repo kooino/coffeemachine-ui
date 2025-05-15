@@ -20,12 +20,6 @@ function App() {
         const data = await res.json();
         setUid(data.uid || "");
         setKortOK(data.valid || false);
-
-        if (data.uid && !data.valid) {
-          setFejl("❌ Kortet du har scannet er ikke godkendt.");
-        } else {
-          setFejl("");
-        }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
       }
@@ -55,11 +49,7 @@ function App() {
   };
 
   const startBrygning = async () => {
-    if (!kortOK) {
-      setFejl("❌ Det kort du har brugt er ikke godkendt – prøv igen med et andet.");
-      return;
-    }
-
+    if (!kortOK) return setFejl("Kort ikke godkendt!");
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik ...");
@@ -98,15 +88,6 @@ function App() {
     setBrygger(false);
     setStatus("");
     setFejl("");
-  };
-
-  const rydLog = async () => {
-    try {
-      await fetch(`${API_BASE}/ryd-bestillinger`, { method: "POST" });
-      alert("✅ Bestillingsloggen er ryddet.");
-    } catch (err) {
-      alert("❌ Kunne ikke rydde log.");
-    }
   };
 
   return (
@@ -151,9 +132,6 @@ function App() {
 
         {status && <div className="status-box"><strong>{status}</strong></div>}
         {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
-
-        <h2 style={{ marginTop: "3rem" }}>🛠️ Serviceområde</h2>
-        <button onClick={rydLog}>Ryd bestillinger</button>
       </div>
     </div>
   );
