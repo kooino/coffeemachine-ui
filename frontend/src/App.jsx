@@ -99,10 +99,11 @@ function App() {
           className="logo"
           onError={(e) => (e.target.style.display = "none")}
         />
-    <h1>☕ Velkommen til Kaffeautomaten</h1>
-<p className="subheading">
-  Scan dit kort, vælg en drik – og nyd din varme kaffe med et smil ☕😊
-</p>
+        <h1>☕ Velkommen til Kaffeautomaten</h1>
+        <p className="subheading">
+          Scan dit kort, vælg en drik – og nyd din kaffe i ro og mag.
+        </p>
+      </div>
 
       <div className="container">
         <h2>1. Vælg drik</h2>
