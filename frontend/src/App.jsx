@@ -20,6 +20,12 @@ function App() {
         const data = await res.json();
         setUid(data.uid || "");
         setKortOK(data.valid || false);
+
+        if (data.uid && !data.valid) {
+          setFejl("❌ Kortet du har scannet er ikke godkendt.");
+        } else {
+          setFejl("");
+        }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
       }
@@ -49,7 +55,11 @@ function App() {
   };
 
   const startBrygning = async () => {
-    if (!kortOK) return setFejl("Kort ikke godkendt!");
+    if (!kortOK) {
+      setFejl("❌ Det kort du har brugt er ikke godkendt – prøv igen med et andet.");
+      return;
+    }
+
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik ...");
@@ -90,6 +100,15 @@ function App() {
     setFejl("");
   };
 
+  const rydLog = async () => {
+    try {
+      await fetch(`${API_BASE}/ryd-bestillinger`, { method: "POST" });
+      alert("✅ Bestillingsloggen er ryddet.");
+    } catch (err) {
+      alert("❌ Kunne ikke rydde log.");
+    }
+  };
+
   return (
     <div className="App">
       <div className="header">
@@ -101,7 +120,7 @@ function App() {
         />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Scan dit kort, vælg en drik – og nyd Gruppe 6 kaffe med fred og ro eller bare sulaimans kaffe han har lavet hele projektet.
+          Scan dit kort, vælg en drik – og nyd din kaffe i ro og mag.
         </p>
       </div>
 
@@ -112,7 +131,6 @@ function App() {
           <option value="Stor kaffe">Stor kaffe</option>
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
-          <option value="Sulaiman">Sulaiman</option>
         </select>
         <button onClick={confirmValg}>Bekræft valg</button>
 
@@ -133,6 +151,9 @@ function App() {
 
         {status && <div className="status-box"><strong>{status}</strong></div>}
         {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
+
+        <h2 style={{ marginTop: "3rem" }}>🛠️ Serviceområde</h2>
+        <button onClick={rydLog}>Ryd bestillinger</button>
       </div>
     </div>
   );
