@@ -9,8 +9,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Justeret grundstørrelser */
   font-size: 18px;
 }
 
@@ -21,13 +19,31 @@ body, html {
   width: 100%;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
 }
 
 #root {
   width: 100%;
   max-width: 1400px;
   padding: 2.5rem;
+}
+
+.logo {
+  display: block;
+  margin: 0 auto 1rem auto;
+  max-width: 180px;
+  height: auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.subheading {
+  font-size: 1.2rem;
+  color: #ccc;
+  margin-top: -1rem;
 }
 
 .container {
@@ -76,14 +92,72 @@ button:hover {
   background-color: #333;
 }
 
-/* Logo (valgfrit) */
-.logo {
-  display: block;
-  margin: 0 auto 2rem auto;
-  max-width: 220px;
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
 }
 
-/* Responsivt design */
+.cancel-btn:hover {
+  background-color: #d32f2f;
+}
+
+/* Status / fejl */
+.status-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #e8f5e9;
+  border-left: 6px solid #66bb6a;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.error-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #ffebee;
+  border-left: 6px solid #e53935;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #c62828;
+}
+
+/* Printvenligt layout */
+@media print {
+  body, html {
+    background: white;
+    color: black;
+    font-size: 12pt;
+  }
+
+  .App,
+  .container {
+    box-shadow: none !important;
+    padding: 0;
+  }
+
+  button,
+  .status-box,
+  .error-box,
+  .popup {
+    display: none !important;
+  }
+
+  .header {
+    margin-top: 0;
+  }
+
+  .logo {
+    max-width: 120px;
+  }
+
+  select,
+  input {
+    border: 1px solid #ccc;
+  }
+}
+
+/* Responsivt */
 @media (max-width: 768px) {
   .container {
     padding: 2rem;
