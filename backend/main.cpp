@@ -13,6 +13,8 @@
 #include <sys/socket.h>
 #include <nfc/nfc.h>
 
+#include "service.h" // ✅ Servicefunktioner
+
 #define PORT 5000
 
 std::mutex dataMutex;
@@ -138,14 +140,8 @@ int main() {
             size_t bodyStart = request.find("\r\n\r\n");
             if (bodyStart != std::string::npos) {
                 gemtValg = request.substr(bodyStart + 4);
-                if (!gemtValg.empty()) {
-                    skrivTilFil("valg.txt", gemtValg);
-                    responseBody = "{\"status\":\"Valg gemt\"}";
-                } else {
-                    responseBody = "{\"error\":\"Tomt valg\"}";
-                }
-            } else {
-                responseBody = "{\"error\":\"Ingen body\"}";
+                skrivTilFil("valg.txt", gemtValg);
+                responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
 
@@ -175,6 +171,10 @@ int main() {
             responseBody = oss.str();
         }
 
+        else if (request.find("GET /bestillinger") != std::string::npos) {
+            responseBody = hentBestillinger();
+        }
+
         else if (request.find("POST /annuller") != std::string::npos) {
             std::lock_guard<std::mutex> lock(dataMutex);
             senesteUID = "";
@@ -182,6 +182,10 @@ int main() {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
+        }
+
+        else if (request.find("POST /ryd-bestillinger") != std::string::npos) {
+            responseBody = rydBestillinger();  // 🔁 Brug service.cpp
         }
 
         else {
