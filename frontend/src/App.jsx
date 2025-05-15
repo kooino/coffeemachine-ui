@@ -40,7 +40,7 @@ function App() {
       if (data.status === "Valg gemt") {
         setShowPopup(true);
       } else {
-        setFejl("Kunne ikke gemme valg.");
+        setFejl(data.error || "Kunne ikke gemme valg.");
       }
     } catch (error) {
       console.error(error);
@@ -128,3 +128,4 @@ function App() {
 }
 
 export default App;
+
