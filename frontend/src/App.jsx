@@ -47,36 +47,32 @@ function App() {
       setFejl("Fejl ved valg. Prøv igen!");
     }
   };
-const startBrygning = async () => {
-  if (!kortOK) {
-    setFejl("❌ Det kort du har brugt er ikke godkendt – prøv igen med et andet.");
-    return;
-  }
 
-  setFejl("");
-  setBrygger(true);
-  setStatus("Brygger din drik ...");
+  const startBrygning = async () => {
+    if (!kortOK) return setFejl("Kort ikke godkendt!");
+    setFejl("");
+    setBrygger(true);
+    setStatus("Brygger din drik ...");
 
-  try {
-    const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
-    const data = await res.json();
-    if (data.status === "Bestilling gennemført") {
-      setStatus("☕ Din drik er klar! Tag din kop.");
-      setTimeout(() => setStatus(""), 4000);
-    } else if (data.error) {
-      setFejl(data.error);
+    try {
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
+      const data = await res.json();
+      if (data.status === "Bestilling gennemført") {
+        setStatus("☕ Din drik er klar! Tag din kop.");
+        setTimeout(() => setStatus(""), 4000);
+      } else if (data.error) {
+        setFejl(data.error);
+        setStatus("");
+      }
+    } catch (error) {
+      console.error(error);
+      setFejl("Fejl ved brygning!");
       setStatus("");
+    } finally {
+      setValg("");
+      setBrygger(false);
     }
-  } catch (error) {
-    console.error(error);
-    setFejl("Fejl ved brygning!");
-    setStatus("");
-  } finally {
-    setValg("");
-    setBrygger(false);
-  }
-};
-
+  };
 
   const aflysBestilling = async () => {
     try {
