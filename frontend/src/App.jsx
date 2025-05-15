@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -14,17 +13,15 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Hent automatisk UID og kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/seneste-uid`);
-        if (!res.ok) throw new Error("Fejl ved hentning");
         const data = await res.json();
         setUid(data.uid || "");
         setKortOK(data.valid || false);
-      } catch (error) {
-        console.error("Fejl ved UID-fetch:", error);
+      } catch (err) {
+        console.error("Fejl ved hentning af UID:", err);
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -52,22 +49,14 @@ function App() {
   };
 
   const startBrygning = async () => {
-    if (!kortOK) {
-      setFejl("Kort ikke godkendt!");
-      return;
-    }
-
+    if (!kortOK) return setFejl("Kort ikke godkendt!");
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik ...");
 
     try {
-      const res = await fetch(`${API_BASE}/bestil`, {
-        method: "POST",
-      });
-
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
-
       if (data.status === "Bestilling gennemført") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
@@ -85,7 +74,13 @@ function App() {
     }
   };
 
-  const aflysBestilling = () => {
+  const aflysBestilling = async () => {
+    try {
+      await fetch(`${API_BASE}/annuller`, { method: "POST" });
+    } catch (err) {
+      console.error("Fejl ved annullering:", err);
+    }
+
     setValg("");
     setKortOK(false);
     setUid("");
@@ -110,7 +105,7 @@ function App() {
         <br />
         <button onClick={confirmValg}>Bekræft valg</button>
 
-        {showPopup && (
+        {showPopup && valg && (
           <SuccessPopup
             message={`✅ Valg gemt: ${valg}`}
             onClose={() => setShowPopup(false)}
@@ -119,31 +114,14 @@ function App() {
 
         <h2>2. Scan kort</h2>
         <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
-        <p>
-          {uid
-            ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!")
-            : "Læg kort på læser..."}
-        </p>
+        <p>{uid ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!") : ""}</p>
 
         <h2>3. Start brygning</h2>
-        <button onClick={startBrygning} disabled={!kortOK || brygger}>
-          Start brygning
-        </button>
-        <button onClick={aflysBestilling} className="cancel-btn">
-          Afbryd
-        </button>
+        <button onClick={startBrygning} disabled={!kortOK || brygger}>Start brygning</button>
+        <button onClick={aflysBestilling} className="cancel-btn">Afbryd</button>
 
-        {status && (
-          <div className="status-box">
-            <strong>{status}</strong>
-          </div>
-        )}
-
-        {fejl && (
-          <div className="error-box">
-            <strong>{fejl}</strong>
-          </div>
-        )}
+        {status && <div className="status-box"><strong>{status}</strong></div>}
+        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
       </div>
     </div>
   );
