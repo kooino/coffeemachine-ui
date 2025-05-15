@@ -2,7 +2,7 @@
 
 CXX = g++
 CXXFLAGS = -Wall -std=c++17 -pthread
-TARGET = kaffeautomat
+TARGET = server
 SOURCES = main.cpp
 LIBS = -lnfc
 
