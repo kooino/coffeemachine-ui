@@ -101,7 +101,7 @@ function App() {
         />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Scan dit kort, vælg en drik – og nyd din kaffe i ro og mag.
+          Scan dit kort, vælg en drik – og nyd Gruppe 6 kaffe med fred og ro eller bare sulaimans kaffe han har lavet hele projektet.
         </p>
       </div>
 
