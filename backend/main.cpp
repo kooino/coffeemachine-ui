@@ -13,7 +13,6 @@
 #include <sys/socket.h>
 #include <nfc/nfc.h>
 
-
 #define PORT 5000
 
 std::mutex dataMutex;
@@ -170,10 +169,6 @@ int main() {
             responseBody = oss.str();
         }
 
-        else if (request.find("GET /bestillinger") != std::string::npos) {
-            responseBody = hentBestillinger();
-        }
-
         else if (request.find("POST /annuller") != std::string::npos) {
             std::lock_guard<std::mutex> lock(dataMutex);
             senesteUID = "";
@@ -181,10 +176,6 @@ int main() {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
-        }
-
-        else if (request.find("POST /ryd-bestillinger") != std::string::npos) {
-            responseBody = rydBestillinger();  // 🔁 Brug service.cpp
         }
 
         else {
