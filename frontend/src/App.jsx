@@ -1,8 +1,4 @@
 // ✅ Komplet React frontend (App.js) tilpasset backend
-// - Viser UID og om kortet er godkendt
-// - Lader bruger vælge drik og bekræfte
-// - Sender bestilling, hvis kort er godkendt
-
 import React, { useState, useEffect } from "react";
 
 function App() {
