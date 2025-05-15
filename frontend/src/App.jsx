@@ -1,79 +1,150 @@
+// src/App.js
 import React, { useState, useEffect } from "react";
+import "./App.css";
+import SuccessPopup from "./SuccessPopup";
 
 function App() {
-  const [uid, setUid] = useState("");
-  const [valid, setValid] = useState(false);
   const [valg, setValg] = useState("");
+  const [uid, setUid] = useState("");
+  const [kortOK, setKortOK] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
+  const [fejl, setFejl] = useState("");
 
+  const API_BASE = "http://localhost:5000";
+
+  // Hent automatisk UID og kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("http://localhost:5000/seneste-uid");
+        const res = await fetch(`${API_BASE}/seneste-uid`);
+        if (!res.ok) throw new Error("Fejl ved hentning");
         const data = await res.json();
         setUid(data.uid || "");
-        setValid(data.valid || false);
-      } catch (err) {
-        console.error("Fejl ved hentning af UID:", err);
+        setKortOK(data.valid || false);
+      } catch (error) {
+        console.error("Fejl ved UID-fetch:", error);
       }
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const sendValg = async () => {
-    if (!valg) return setError("Vælg en drik først");
-    setError("");
+  const confirmValg = async () => {
+    if (!valg) return setFejl("Vælg en drik først!");
+    setFejl("");
     try {
-      const res = await fetch("http://localhost:5000/gem-valg", {
+      const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: valg,
       });
       const data = await res.json();
-      if (data.status === "Valg gemt") setStatus("✅ Valg gemt");
-    } catch (err) {
-      setError("Kunne ikke sende valg");
+      if (data.status === "Valg gemt") {
+        setShowPopup(true);
+      } else {
+        setFejl("Kunne ikke gemme valg.");
+      }
+    } catch (error) {
+      console.error(error);
+      setFejl("Fejl ved valg. Prøv igen!");
     }
   };
 
-  const sendBestil = async () => {
-    if (!valid || !uid) return setError("Kort ikke godkendt");
-    try {
-      const res = await fetch("http://localhost:5000/bestil", { method: "POST" });
-      const data = await res.json();
-      if (data.status === "Bestilling gennemført") {
-        setStatus("☕ Din drik er på vej!");
-        setValg("");
-      } else {
-        setError(data.error || "Ukendt fejl");
-      }
-    } catch (err) {
-      setError("Fejl ved bestilling");
+  const startBrygning = async () => {
+    if (!kortOK) {
+      setFejl("Kort ikke godkendt!");
+      return;
     }
+
+    setFejl("");
+    setBrygger(true);
+    setStatus("Brygger din drik ...");
+
+    try {
+      const res = await fetch(`${API_BASE}/bestil`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (data.status === "Bestilling gennemført") {
+        setStatus("☕ Din drik er klar! Tag din kop.");
+        setTimeout(() => setStatus(""), 4000);
+      } else if (data.error) {
+        setFejl(data.error);
+        setStatus("");
+      }
+    } catch (error) {
+      console.error(error);
+      setFejl("Fejl ved brygning!");
+      setStatus("");
+    } finally {
+      setValg("");
+      setBrygger(false);
+    }
+  };
+
+  const aflysBestilling = () => {
+    setValg("");
+    setKortOK(false);
+    setUid("");
+    setShowPopup(false);
+    setBrygger(false);
+    setStatus("");
+    setFejl("");
   };
 
   return (
-    <div style={{ padding: 30, fontFamily: "Arial", maxWidth: 400 }}>
-      <h1>☕ Kaffeautomat</h1>
-      <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
-      <p>{uid ? (valid ? "✅ Godkendt kort" : "❌ Afvist kort") : ""}</p>
+    <div className="App">
+      <div className="container">
+        <h1>☕ Kaffeautomat ☕</h1>
 
-      <h3>Vælg drik:</h3>
-      <select value={valg} onChange={(e) => setValg(e.target.value)}>
-        <option value="">-- vælg --</option>
-        <option value="Te">Te</option>
-        <option value="Lille kaffe">Lille kaffe</option>
-        <option value="Stor kaffe">Stor kaffe</option>
-      </select>
-      <br /><br />
-      <button onClick={sendValg}>Gem valg</button>
+        <h2>1. Vælg drik</h2>
+        <select value={valg} onChange={(e) => setValg(e.target.value)}>
+          <option value="">-- Vælg --</option>
+          <option value="Stor kaffe">Stor kaffe</option>
+          <option value="Lille kaffe">Lille kaffe</option>
+          <option value="Te">Te</option>
+        </select>
+        <br />
+        <button onClick={confirmValg}>Bekræft valg</button>
 
-      <h3 style={{ marginTop: 20 }}>Start brygning:</h3>
-      <button onClick={sendBestil} disabled={!valid}>Start</button>
+        {showPopup && (
+          <SuccessPopup
+            message={`✅ Valg gemt: ${valg}`}
+            onClose={() => setShowPopup(false)}
+          />
+        )}
 
-      {status && <p style={{ color: "green" }}>{status}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        <h2>2. Scan kort</h2>
+        <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
+        <p>
+          {uid
+            ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!")
+            : "Læg kort på læser..."}
+        </p>
+
+        <h2>3. Start brygning</h2>
+        <button onClick={startBrygning} disabled={!kortOK || brygger}>
+          Start brygning
+        </button>
+        <button onClick={aflysBestilling} className="cancel-btn">
+          Afbryd
+        </button>
+
+        {status && (
+          <div className="status-box">
+            <strong>{status}</strong>
+          </div>
+        )}
+
+        {fejl && (
+          <div className="error-box">
+            <strong>{fejl}</strong>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
