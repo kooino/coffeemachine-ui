@@ -165,6 +165,13 @@ int main() {
             responseBody = oss.str();
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
+        } else if (request.find("POST /annuller") != std::string::npos) {
+            std::lock_guard<std::mutex> lock(dataMutex);
+            senesteUID = "";
+            kortOK = false;
+            skrivTilFil("kort.txt", "0");
+            skrivTilFil("valg.txt", "");
+            responseBody = "{\"status\":\"Annulleret\"}";
         } else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
