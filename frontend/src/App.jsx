@@ -92,9 +92,13 @@ function App() {
 
   return (
     <div className="App">
-      <div className="container">
-        <h1>☕ Kaffeautomat ☕</h1>
+      <div className="header">
+        <img src="/logo.png" alt="Kaffeautomat Logo" className="logo" />
+        <h1>☕ Velkommen til Kaffeautomaten</h1>
+        <p className="subheading">Scan dit kort, vælg en drik og nyd din kaffe!</p>
+      </div>
 
+      <div className="container">
         <h2>1. Vælg drik</h2>
         <select value={valg} onChange={(e) => setValg(e.target.value)}>
           <option value="">-- Vælg --</option>
@@ -102,7 +106,6 @@ function App() {
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
         </select>
-        <br />
         <button onClick={confirmValg}>Bekræft valg</button>
 
         {showPopup && valg && (
@@ -128,4 +131,3 @@ function App() {
 }
 
 export default App;
-
