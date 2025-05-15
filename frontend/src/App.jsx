@@ -93,7 +93,12 @@ function App() {
   return (
     <div className="App">
       <div className="header">
-        <img src="/logo.png" alt="Kaffeautomat Logo" className="logo" />
+        <img
+          src="/kaffekop.png"
+          alt="Kaffeautomat Logo"
+          className="logo"
+          onError={(e) => (e.target.style.display = "none")}
+        />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">Scan dit kort, vælg en drik og nyd din kaffe!</p>
       </div>
