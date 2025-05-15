@@ -138,10 +138,18 @@ int main() {
             size_t bodyStart = request.find("\r\n\r\n");
             if (bodyStart != std::string::npos) {
                 gemtValg = request.substr(bodyStart + 4);
-                skrivTilFil("valg.txt", gemtValg);
-                responseBody = "{\"status\":\"Valg gemt\"}";
+                if (!gemtValg.empty()) {
+                    skrivTilFil("valg.txt", gemtValg);
+                    responseBody = "{\"status\":\"Valg gemt\"}";
+                } else {
+                    responseBody = "{\"error\":\"Tomt valg\"}";
+                }
+            } else {
+                responseBody = "{\"error\":\"Ingen body\"}";
             }
-        } else if (request.find("POST /bestil") != std::string::npos) {
+        }
+
+        else if (request.find("POST /bestil") != std::string::npos) {
             std::string valg = læsFraFil("valg.txt");
             std::string kortStatus = læsFraFil("kort.txt");
             if (kortStatus == "1" && !valg.empty()) {
@@ -152,7 +160,9 @@ int main() {
             } else {
                 responseBody = "{\"error\":\"Kort ikke godkendt eller valg mangler\"}";
             }
-        } else if (request.find("GET /seneste-uid") != std::string::npos) {
+        }
+
+        else if (request.find("GET /seneste-uid") != std::string::npos) {
             std::string uid;
             bool valid;
             {
@@ -163,16 +173,18 @@ int main() {
             std::ostringstream oss;
             oss << "{ \"uid\": \"" << uid << "\", \"valid\": " << (valid ? "true" : "false") << " }";
             responseBody = oss.str();
-        } else if (request.find("GET /bestillinger") != std::string::npos) {
-            responseBody = hentBestillinger();
-        } else if (request.find("POST /annuller") != std::string::npos) {
+        }
+
+        else if (request.find("POST /annuller") != std::string::npos) {
             std::lock_guard<std::mutex> lock(dataMutex);
             senesteUID = "";
             kortOK = false;
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
-        } else {
+        }
+
+        else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
