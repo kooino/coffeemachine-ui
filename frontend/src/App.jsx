@@ -1,4 +1,3 @@
-// ✅ Komplet React frontend (App.js) tilpasset backend
 import React, { useState, useEffect } from "react";
 
 function App() {
@@ -23,10 +22,7 @@ function App() {
   }, []);
 
   const sendValg = async () => {
-    if (!valg) {
-      setError("Vælg en drik først");
-      return;
-    }
+    if (!valg) return setError("Vælg en drik først");
     setError("");
     try {
       const res = await fetch("http://localhost:5000/gem-valg", {
@@ -35,75 +31,49 @@ function App() {
         body: valg,
       });
       const data = await res.json();
-      if (data.status === "Valg gemt") {
-        setStatus("✅ Valg gemt");
-      } else {
-        setError("Kunne ikke gemme valg");
-      }
+      if (data.status === "Valg gemt") setStatus("✅ Valg gemt");
     } catch (err) {
-      console.error("Fejl ved gem-valg:", err);
+      setError("Kunne ikke sende valg");
     }
   };
 
   const sendBestil = async () => {
-    if (!valid || !uid) {
-      setError("Kort er ikke godkendt eller mangler");
-      return;
-    }
+    if (!valid || !uid) return setError("Kort ikke godkendt");
     try {
       const res = await fetch("http://localhost:5000/bestil", { method: "POST" });
       const data = await res.json();
       if (data.status === "Bestilling gennemført") {
-        setStatus("☕ Din drik er klar!");
+        setStatus("☕ Din drik er på vej!");
         setValg("");
       } else {
-        setError(data.error || "Fejl ved bestilling");
+        setError(data.error || "Ukendt fejl");
       }
     } catch (err) {
-      console.error("Fejl ved bestil:", err);
+      setError("Fejl ved bestilling");
     }
   };
 
   return (
-    <div style={{ padding: 30, fontFamily: "Arial" }}>
+    <div style={{ padding: 30, fontFamily: "Arial", maxWidth: 400 }}>
       <h1>☕ Kaffeautomat</h1>
+      <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
+      <p>{uid ? (valid ? "✅ Godkendt kort" : "❌ Afvist kort") : ""}</p>
 
-      <h2>UID:</h2>
-      <input
-        type="text"
-        value={uid}
-        readOnly
-        style={{ fontSize: "1.5em", width: "320px", marginBottom: 10 }}
-      />
-      <div style={{ marginBottom: 20 }}>
-        {uid ? (valid ? "✅ Kort godkendt" : "❌ Kort ikke godkendt") : "⌛ Venter på kort..."}
-      </div>
-
-      <h2>Vælg din drik:</h2>
+      <h3>Vælg drik:</h3>
       <select value={valg} onChange={(e) => setValg(e.target.value)}>
-        <option value="">-- Vælg --</option>
+        <option value="">-- vælg --</option>
         <option value="Te">Te</option>
         <option value="Lille kaffe">Lille kaffe</option>
         <option value="Stor kaffe">Stor kaffe</option>
       </select>
       <br /><br />
-      <button onClick={sendValg}>Bekræft valg</button>
+      <button onClick={sendValg}>Gem valg</button>
 
-      <h2 style={{ marginTop: 30 }}>Start brygning:</h2>
-      <button onClick={sendBestil} disabled={!valid}>
-        Start brygning
-      </button>
+      <h3 style={{ marginTop: 20 }}>Start brygning:</h3>
+      <button onClick={sendBestil} disabled={!valid}>Start</button>
 
-      {status && (
-        <div style={{ marginTop: 20, color: "green" }}>
-          <strong>{status}</strong>
-        </div>
-      )}
-      {error && (
-        <div style={{ marginTop: 20, color: "red" }}>
-          <strong>{error}</strong>
-        </div>
-      )}
+      {status && <p style={{ color: "green" }}>{status}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }
