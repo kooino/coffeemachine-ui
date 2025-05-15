@@ -13,7 +13,6 @@
 #include <sys/socket.h>
 #include <nfc/nfc.h>
 
-#include "service.h" // ✅ Servicefunktioner
 
 #define PORT 5000
 
