@@ -6,8 +6,8 @@
   background-color: #4caf50;
   color: white;
   padding: 1rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
   opacity: 1;
   transition: opacity 0.8s ease-out;
   z-index: 999;
