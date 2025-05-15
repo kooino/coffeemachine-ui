@@ -112,6 +112,7 @@ function App() {
           <option value="Stor kaffe">Stor kaffe</option>
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
+          <option value="Sulaiman">Sulaiman</option>
         </select>
         <button onClick={confirmValg}>Bekræft valg</button>
 
