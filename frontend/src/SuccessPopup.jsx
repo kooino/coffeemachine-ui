@@ -5,8 +5,17 @@ const SuccessPopup = ({ message, onClose }) => {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    const timer1 = setTimeout(() => setFadeOut(true), 2000);     // start fade
-    const timer2 = setTimeout(onClose, 2800);                    // remove from DOM
+    // Tid før fade starter (i ms)
+    const FADE_DELAY = 2000;
+    // Tid før komponent fjernes helt
+    const REMOVE_DELAY = 2800;
+
+    const timer1 = setTimeout(() => setFadeOut(true), FADE_DELAY);
+    const timer2 = setTimeout(() => {
+      if (typeof onClose === "function") {
+        onClose();
+      }
+    }, REMOVE_DELAY);
 
     return () => {
       clearTimeout(timer1);
