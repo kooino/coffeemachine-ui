@@ -1,14 +1,17 @@
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
+  color: rgba(255, 255, 255, 0.95);
   background-color: #242424;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Justeret grundstørrelser */
+  font-size: 18px;
 }
 
 body, html {
@@ -23,78 +26,79 @@ body, html {
 
 #root {
   width: 100%;
-  max-width: 1200px;
-  padding: 2rem;
+  max-width: 1400px;
+  padding: 2.5rem;
 }
 
 .container {
   background: #ffffff;
   color: #000;
-  padding: 3rem;
-  border-radius: 16px;
-  box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
+  padding: 4rem;
+  border-radius: 20px;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
   width: 100%;
-  min-height: 70vh;
+  min-height: 75vh;
 }
 
 /* Inputs og knapper */
 input, select, button {
   width: 100%;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  padding: 0.8rem;
+  margin-bottom: 1.2rem;
+  font-size: 1.3rem;
+  padding: 1rem;
   box-sizing: border-box;
+  border-radius: 8px;
 }
 
 h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 3.2rem;
+  margin-bottom: 1.5rem;
   text-align: center;
 }
 
 h2 {
-  font-size: 1.8rem;
-  margin-top: 2rem;
+  font-size: 2rem;
+  margin-top: 2.5rem;
 }
 
 p, label {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
 }
 
 button {
   background-color: #1a1a1a;
   color: white;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 button:hover {
   background-color: #333;
 }
 
-/* Tilføj logo (valgfrit) */
+/* Logo (valgfrit) */
 .logo {
   display: block;
-  margin: 0 auto 1.5rem auto;
-  max-width: 200px;
+  margin: 0 auto 2rem auto;
+  max-width: 220px;
 }
 
 /* Responsivt design */
 @media (max-width: 768px) {
   .container {
-    padding: 1.5rem;
+    padding: 2rem;
   }
 
   h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
   }
 
   h2 {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
   }
 
   input, select, button {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    padding: 0.75rem;
   }
 }
