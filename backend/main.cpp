@@ -1,4 +1,5 @@
-// backend/main.cpp
+// backend/main.cpp (komplet version med I2C UID-læsning fra Arduino)
+
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -14,7 +15,6 @@
 #include <sys/socket.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
-#include <thread>
 
 #define PORT 5000
 #define I2C_ADDR 0x08
@@ -117,32 +117,6 @@ void sendI2CCommand(const std::string& cmd) {
     usleep(100000);
 }
 
-std::string hentUIDFraI2C() {
-    const char* filename = "/dev/i2c-1";
-    int file = open(filename, O_RDWR);
-    if (file < 0) {
-        perror("Kunne ikke åbne I2C-enhed");
-        return "";
-    }
-
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        perror("Kunne ikke sætte I2C-adresse");
-        close(file);
-        return "";
-    }
-
-    char buffer[32] = {0};
-    ssize_t bytesRead = read(file, buffer, sizeof(buffer) - 1);
-    close(file);
-
-    if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        return std::string(buffer);
-    }
-
-    return "";
-}
-
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -195,8 +169,21 @@ int main() {
         }
 
         else if (request.find("GET /tjek-kort") != std::string::npos) {
-            std::string uid = hentUIDFraI2C();
-            std::cout << "🔁 UID fra Arduino: " << uid << std::endl;
+            std::string uid = "";
+            const char* i2c_dev = "/dev/i2c-1";
+            int file = open(i2c_dev, O_RDWR);
+
+            if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR) >= 0) {
+                char buffer[16] = {0};
+                int bytes = read(file, buffer, sizeof(buffer));
+                if (bytes > 0) {
+                    uid = std::string(buffer, bytes);
+                    std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
+                } else {
+                    std::cerr << "❌ Ingen UID læst fra Arduino" << std::endl;
+                }
+                close(file);
+            }
 
             bool kortOK = checkKort(uid);
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
