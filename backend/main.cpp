@@ -21,6 +21,7 @@ std::mutex logMutex;
 std::string gemtValg;
 
 bool checkKort(const std::string& uid) {
+    if (uid == "3552077462") return false; // Forkert kort
     std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
     return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
@@ -185,20 +186,22 @@ int main() {
                 if (bytes > 0) {
                     std::string raw(buffer, bytes);
                     uid = filtrerUID(raw);
-                    std::cout << "✅ UID modtaget fra Arduino: '" << uid << "'" << std::endl;
+                    std::cout << "✅ UID modtaget: '" << uid << "'" << std::endl;
                 } else {
-                    std::cerr << "❌ Ingen UID læst fra Arduino" << std::endl;
+                    std::cerr << "❌ Ingen UID læst" << std::endl;
                 }
                 close(file);
             }
 
-            bool kortOK = checkKort(uid);
+            bool kortOK = (!uid.empty() && checkKort(uid));
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
 
-            if (kortOK) {
-                responseBody = "{\"kortOK\": true}";
+            if (uid.empty()) {
+                responseBody = "{\"kortOK\": false}";
+            } else if (!kortOK) {
+                responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
             } else {
-                responseBody = "{\"kortOK\": false, \"error\": \"Kort ikke godkendt\"}";
+                responseBody = "{\"kortOK\": true}";
             }
         }
 
@@ -215,6 +218,12 @@ int main() {
             } else {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
+        }
+
+        else if (request.find("POST /annuller") != std::string::npos) {
+            skrivTilFil("kort.txt", "0");
+            skrivTilFil("valg.txt", "");
+            responseBody = "{\"status\":\"Annulleret\"}";
         }
 
         else if (request.find("GET /bestillinger") != std::string::npos) {
