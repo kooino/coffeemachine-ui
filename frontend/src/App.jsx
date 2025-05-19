@@ -13,6 +13,7 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Poll NFC UID hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -39,6 +40,7 @@ function App() {
       const data = await res.json();
       if (data.status === "Valg gemt") {
         setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 3000);
       } else {
         setFejl(data.error || "Kunne ikke gemme valg.");
       }
@@ -127,8 +129,12 @@ function App() {
         <p>{uid ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!") : ""}</p>
 
         <h2>3. Start brygning</h2>
-        <button onClick={startBrygning} disabled={!kortOK || brygger}>Start brygning</button>
-        <button onClick={aflysBestilling} className="cancel-btn">Afbryd</button>
+        <button onClick={startBrygning} disabled={!kortOK || brygger}>
+          Start brygning
+        </button>
+        <button onClick={aflysBestilling} className="cancel-btn">
+          Afbryd
+        </button>
 
         {status && <div className="status-box"><strong>{status}</strong></div>}
         {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
