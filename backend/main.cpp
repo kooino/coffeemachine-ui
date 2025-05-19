@@ -180,11 +180,11 @@ int main() {
             int file = open(i2c_dev, O_RDWR);
 
             if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR) >= 0) {
-                char buffer[32] = {0};  // større buffer for at fange alt
+                char buffer[32] = {0};
                 int bytes = read(file, buffer, sizeof(buffer));
                 if (bytes > 0) {
                     std::string raw(buffer, bytes);
-                    uid = filtrerUID(raw);  // kun tal beholdes
+                    uid = filtrerUID(raw);
                     std::cout << "✅ UID modtaget fra Arduino: '" << uid << "'" << std::endl;
                 } else {
                     std::cerr << "❌ Ingen UID læst fra Arduino" << std::endl;
@@ -194,7 +194,12 @@ int main() {
 
             bool kortOK = checkKort(uid);
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
-            responseBody = "{\"kortOK\":" + std::string(kortOK ? "true" : "false") + "}";
+
+            if (kortOK) {
+                responseBody = "{\"kortOK\": true}";
+            } else {
+                responseBody = "{\"kortOK\": false, \"error\": \"Kort ikke godkendt\"}";
+            }
         }
 
         else if (request.find("POST /bestil") != std::string::npos) {
