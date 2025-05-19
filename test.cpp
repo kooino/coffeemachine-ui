@@ -10,12 +10,12 @@ int main() {
 
     int file = open(device, O_RDWR);
     if (file < 0) {
-        perror("❌ Kunne ikke åbne /dev/i2c-1");
+        perror(" Kunne ikke åbne /dev/i2c-1");
         return 1;
     }
 
     if (ioctl(file, I2C_SLAVE, address) < 0) {
-        perror("❌ Kunne ikke kontakte I2C-enhed (0x08)");
+        perror(" Kunne ikke kontakte I2C-enhed (0x08)");
         close(file);
         return 1;
     }
@@ -25,9 +25,9 @@ int main() {
 
     if (bytesRead > 0) {
         buffer[bytesRead] = '\0';
-        std::cout << "✅ UID modtaget fra Arduino: " << buffer << std::endl;
+        std::cout << " UID modtaget fra Arduino: " << buffer << std::endl;
     } else {
-        std::cerr << "⚠️  Ingen data modtaget – måske ikke noget kort scannet?" << std::endl;
+        std::cerr << "  Ingen data modtaget – måske ikke noget kort scannet?" << std::endl;
     }
 
     close(file);
