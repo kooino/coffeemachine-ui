@@ -105,8 +105,7 @@ function App() {
       <div className="header">
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          1. Koppen er klar og ventetiden kort bare spørg Peter, han ved hvad der er gjort.
-          2. Scan og vælg så sker der magi, for Peter Høghs kaffe venter lige forbi.
+          Scan og vælg så kommer ido service forbi.
         </p>
       </div>
 
