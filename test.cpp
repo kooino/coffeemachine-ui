@@ -4,6 +4,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
+#include <cctype>
 
 int main() {
     const char* device = "/dev/i2c-1";
@@ -22,18 +23,20 @@ int main() {
         return 1;
     }
 
-    int bytesRead = read(file, buffer, sizeof(buffer) - 1);
+    int bytesRead = read(file, buffer, sizeof(buffer));
     if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-
-        // HEX DUMP
         std::cout << "Rådata (hex): ";
         for (int i = 0; i < bytesRead; i++) {
             printf("%02X ", (unsigned char)buffer[i]);
         }
         std::cout << std::endl;
 
-        std::string uid(buffer);
+        // Udtræk kun cifre
+        std::string uid;
+        for (int i = 0; i < bytesRead; i++) {
+            if (isdigit(buffer[i])) uid += buffer[i];
+        }
+
         std::cout << "✅ UID modtaget fra Arduino som tekst: '" << uid << "'" << std::endl;
     } else {
         std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
