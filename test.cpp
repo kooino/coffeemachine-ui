@@ -4,6 +4,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
+#include <cctype>
 
 int main() {
     const char* device = "/dev/i2c-1";
@@ -24,9 +25,16 @@ int main() {
 
     int bytesRead = read(file, buffer, sizeof(buffer));
     if (bytesRead > 0) {
-        std::cout << "✅ UID modtaget fra Arduino: ";
-        std::cout.write(buffer, bytesRead);
-        std::cout << std::endl;
+        std::string uid;
+        for (int i = 0; i < bytesRead; i++) {
+            if (std::isdigit(buffer[i])) uid += buffer[i];
+        }
+
+        if (!uid.empty() && uid != "0") {
+            std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
+        } else {
+            std::cout << "ℹ️ Ingen nyt kort scannet." << std::endl;
+        }
     } else {
         std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
     }
