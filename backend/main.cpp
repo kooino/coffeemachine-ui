@@ -129,9 +129,14 @@ int main() {
                 close(file);
             }
             bool kortOK = checkKort(uid);
-            skrivTilFil("kort.txt", kortOK ? "1" : "0");
-            if (kortOK) responseBody = "{\"kortOK\": true}";
-            else responseBody = "{\"kortOK\": false, \"error\": \"❌ Forkert kort\"}";
+            if (kortOK) {
+                skrivTilFil("kort.txt", "1");
+                responseBody = "{\"kortOK\": true}";
+            } else {
+                skrivTilFil("kort.txt", "0");
+                skrivTilFil("uid.txt", ""); // ryd UID ved ugyldig kort
+                responseBody = "{\"kortOK\": false, \"error\": \"❌ Forkert kort\"}";
+            }
         } else if (request.find("POST /bestil") != std::string::npos) {
             std::string kort = læsFraFil("kort.txt");
             std::string valg = læsFraFil("valg.txt");
@@ -147,6 +152,7 @@ int main() {
         } else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
+            skrivTilFil("uid.txt", ""); // ryd UID ved annullering
             responseBody = "{\"status\":\"Annulleret\"}";
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
