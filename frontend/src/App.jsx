@@ -1,4 +1,4 @@
-// frontend/src/App.js
+// frontend
 import React, { useState } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
