@@ -27,4 +27,9 @@ int main() {
         std::string uid(buffer, bytesRead);
         std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
     } else {
-        std::cerr << "❌ Fejl ved læsning fra
+        std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
+    }
+
+    close(file);
+    return 0;
+}
