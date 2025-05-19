@@ -4,32 +4,37 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 int main() {
-    const char *device = "/dev/i2c-1";   // I2C bus (typisk i2c-1 på Pi)
-    int addr = 0x08;                     // Arduino slaveadresse
-    char buffer[32] = {0};               // Buffer til at modtage data
+    const char *device = "/dev/i2c-1";   // I2C-bus
+    int addr = 0x08;                     // Arduino-slaveadresse
+    char buffer[32] = {0};               // Buffer til data
 
-    // Åbn I2C-bus
     int file = open(device, O_RDWR);
     if (file < 0) {
-        std::cerr << "Kan ikke åbne I2C enhed." << std::endl;
+        std::cerr << "Kan ikke åbne I2C-enhed." << std::endl;
         return 1;
     }
 
-    // Sæt slaveadresse
     if (ioctl(file, I2C_SLAVE, addr) < 0) {
         std::cerr << "Kan ikke sætte slaveadresse." << std::endl;
         close(file);
         return 1;
     }
 
-    // Læs op til 32 bytes fra Arduino
-    int bytesRead = read(file, buffer, sizeof(buffer));
-    if (bytesRead < 0) {
-        std::cerr << "Fejl ved læsning fra Arduino." << std::endl;
-    } else {
-        std::cout << "Modtaget fra Arduino: " << buffer << std::endl;
+    while (true) {
+        memset(buffer, 0, sizeof(buffer)); // Nulstil buffer
+
+        int bytesRead = read(file, buffer, sizeof(buffer));
+        if (bytesRead > 0) {
+            std::cout << "Modtaget fra Arduino: " << buffer << std::endl;
+        } else {
+            std::cerr << "Fejl ved læsning fra Arduino." << std::endl;
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     close(file);
