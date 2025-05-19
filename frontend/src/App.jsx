@@ -1,34 +1,28 @@
-// FRONTEND: App.jsx
-
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
 function App() {
   const [valg, setValg] = useState("");
+  const [uid, setUid] = useState("");
   const [kortOK, setKortOK] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
-  const [aflyser, setAflyser] = useState(false);
 
   const API_BASE = "http://localhost:5000";
 
+  // Poll NFC UID hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE}/tjek-kort`);
+        const res = await fetch(${API_BASE}/seneste-uid);
         const data = await res.json();
-        setKortOK(data.kortOK || false);
-        if (!data.kortOK && data.error) {
-          setFejl(data.error);
-        } else {
-          setFejl("");
-        }
+        setUid(data.uid || "");
+        setKortOK(data.valid || false);
       } catch (err) {
-        console.error("Fejl ved hentning af kortstatus:", err);
-        setFejl("Forbindelsesfejl til server");
+        console.error("Fejl ved hentning af UID:", err);
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -38,7 +32,7 @@ function App() {
     if (!valg) return setFejl("Vælg en drik først!");
     setFejl("");
     try {
-      const res = await fetch(`${API_BASE}/gem-valg`, {
+      const res = await fetch(${API_BASE}/gem-valg, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: valg,
@@ -63,9 +57,9 @@ function App() {
     setStatus("Brygger din drik ...");
 
     try {
-      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
+      const res = await fetch(${API_BASE}/bestil, { method: "POST" });
       const data = await res.json();
-      if (data.status === "OK") {
+      if (data.status === "Bestilling gennemført") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
       } else if (data.error) {
@@ -83,28 +77,19 @@ function App() {
   };
 
   const aflysBestilling = async () => {
-    if (aflyser) return;
-    setAflyser(true);
-
     try {
-      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
-      const data = await res.json();
-      if (data.status === "Annulleret") {
-        setStatus("Bestilling annulleret.");
-        setTimeout(() => setStatus(""), 3000);
-      }
+      await fetch(${API_BASE}/annuller, { method: "POST" });
     } catch (err) {
       console.error("Fejl ved annullering:", err);
-      setFejl("Kunne ikke annullere.");
     }
 
     setValg("");
     setKortOK(false);
+    setUid("");
     setShowPopup(false);
     setBrygger(false);
     setStatus("");
     setFejl("");
-    setAflyser(false);
   };
 
   return (
@@ -134,23 +119,20 @@ function App() {
 
         {showPopup && valg && (
           <SuccessPopup
-            message={`✅ Valg gemt: ${valg}`}
+            message={✅ Valg gemt: ${valg}}
             onClose={() => setShowPopup(false)}
           />
         )}
 
         <h2>2. Scan kort</h2>
-        <p>
-          {kortOK
-            ? "✅ Kort godkendt! Du kan nu starte brygning."
-            : "⌛ Vent på godkendt kort..."}
-        </p>
+        <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
+        <p>{uid ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!") : ""}</p>
 
         <h2>3. Start brygning</h2>
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
           Start brygning
         </button>
-        <button onClick={aflysBestilling} className="cancel-btn" disabled={aflyser}>
+        <button onClick={aflysBestilling} className="cancel-btn">
           Afbryd
         </button>
 
@@ -161,4 +143,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; 
