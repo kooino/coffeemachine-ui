@@ -1,3 +1,5 @@
+// FRONTEND: App.jsx
+
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -10,19 +12,24 @@ function App() {
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
+  const [aflyser, setAflyser] = useState(false);
 
   const API_BASE = "http://localhost:5000";
 
-  // Poll NFC UID hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE}/seneste-uid`);
+        const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
-        setUid(data.uid || "");
-        setKortOK(data.valid || false);
+        setKortOK(data.kortOK || false);
+        if (!data.kortOK && data.error) {
+          setFejl(data.error);
+        } else {
+          setFejl("");
+        }
       } catch (err) {
-        console.error("Fejl ved hentning af UID:", err);
+        console.error("Fejl ved hentning af kortstatus:", err);
+        setFejl("Forbindelsesfejl til server");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -59,7 +66,7 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
-      if (data.status === "Bestilling gennemført") {
+      if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
       } else if (data.error) {
@@ -77,10 +84,19 @@ function App() {
   };
 
   const aflysBestilling = async () => {
+    if (aflyser) return;
+    setAflyser(true);
+
     try {
-      await fetch(`${API_BASE}/annuller`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
+      const data = await res.json();
+      if (data.status === "Annulleret") {
+        setStatus("Bestilling annulleret.");
+        setTimeout(() => setStatus(""), 3000);
+      }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
+      setFejl("Kunne ikke annullere.");
     }
 
     setValg("");
@@ -90,6 +106,7 @@ function App() {
     setBrygger(false);
     setStatus("");
     setFejl("");
+    setAflyser(false);
   };
 
   return (
@@ -132,7 +149,7 @@ function App() {
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
           Start brygning
         </button>
-        <button onClick={aflysBestilling} className="cancel-btn">
+        <button onClick={aflysBestilling} className="cancel-btn" disabled={aflyser}>
           Afbryd
         </button>
 
