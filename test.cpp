@@ -4,6 +4,16 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
+#include <cctype>
+
+// Hjælpefunktion til at trimme ikke-tal fra slutningen
+std::string trimToDigits(const std::string& src) {
+    size_t start = 0;
+    while (start < src.size() && !isdigit(src[start])) start++;
+    size_t end = start;
+    while (end < src.size() && isdigit(src[end])) end++;
+    return src.substr(start, end - start);
+}
 
 int main() {
     const char* device = "/dev/i2c-1";
@@ -22,19 +32,20 @@ int main() {
         return 1;
     }
 
-    // Læs op til 31 bytes, så der er plads til null-terminering
     int bytesRead = read(file, buffer, sizeof(buffer) - 1);
     if (bytesRead > 0) {
-        buffer[bytesRead] = '\0'; // Sikrer null-terminering
+        buffer[bytesRead] = '\0';
         std::string uid(buffer);
         std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
 
-        // Hvis du vil bruge tallet som integer:
+        // Trim UID til kun at indeholde tal
+        std::string trimmed = trimToDigits(uid);
+
         try {
-            unsigned long uidNum = std::stoul(uid);
+            unsigned long uidNum = std::stoul(trimmed);
             std::cout << "UID som tal: " << uidNum << std::endl;
         } catch (...) {
-            std::cerr << "❌ Kunne ikke konvertere UID til tal.\n";
+            std::cerr << "❌ Kunne ikke konvertere UID til tal. Trimmet streng var: '" << trimmed << "'\n";
         }
 
     } else {
