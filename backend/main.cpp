@@ -102,8 +102,12 @@ int main() {
     bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     listen(server_fd, 10);
 
+    std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
+
     while (true) {
         new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
+        std::cout << "🔌 Forbindelse modtaget fra klient" << std::endl;
+
         memset(buffer, 0, sizeof(buffer));
         read(new_socket, buffer, sizeof(buffer));
         std::string request(buffer);
@@ -134,7 +138,7 @@ int main() {
                 responseBody = "{\"kortOK\": true}";
             } else {
                 skrivTilFil("kort.txt", "0");
-                skrivTilFil("uid.txt", ""); // ryd UID ved ugyldig kort
+                skrivTilFil("uid.txt", "");
                 responseBody = "{\"kortOK\": false, \"error\": \"❌ Forkert kort\"}";
             }
         } else if (request.find("POST /bestil") != std::string::npos) {
@@ -152,7 +156,7 @@ int main() {
         } else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            skrivTilFil("uid.txt", ""); // ryd UID ved annullering
+            skrivTilFil("uid.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
