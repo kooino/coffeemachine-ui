@@ -24,14 +24,17 @@ int main() {
 
     int bytesRead = read(file, buffer, sizeof(buffer) - 1);
     if (bytesRead > 0) {
-        buffer[bytesRead] = '\0'; // Sikrer null-terminering
+        buffer[bytesRead] = '\0';
+
+        // HEX DUMP
+        std::cout << "Rådata (hex): ";
+        for (int i = 0; i < bytesRead; i++) {
+            printf("%02X ", (unsigned char)buffer[i]);
+        }
+        std::cout << std::endl;
+
         std::string uid(buffer);
-
-        // Fjerner eventuelle ikke-udskrivbare tegn fra starten/slutningen
-        uid.erase(0, uid.find_first_of("0123456789"));
-        uid.erase(uid.find_last_of("0123456789") + 1);
-
-        std::cout << "✅ UID modtaget fra Arduino som tekst: " << uid << std::endl;
+        std::cout << "✅ UID modtaget fra Arduino som tekst: '" << uid << "'" << std::endl;
     } else {
         std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
     }
