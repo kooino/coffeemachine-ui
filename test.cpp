@@ -8,9 +8,9 @@
 #include <thread>
 
 int main() {
-    const char *device = "/dev/i2c-1";   // I2C-bus
-    int addr = 0x08;                     // Arduino-slaveadresse
-    char buffer[32];                     // Buffer til data
+    const char *device = "/dev/i2c-1";
+    int addr = 0x08;
+    char buffer[32]; // Uden nulstilling
 
     int file = open(device, O_RDWR);
     if (file < 0) {
@@ -25,13 +25,14 @@ int main() {
     }
 
     while (true) {
-        memset(buffer, 0, sizeof(buffer)); // Nulstil buffer
-
         int bytesRead = read(file, buffer, sizeof(buffer));
+
         if (bytesRead > 0) {
             std::cout << "Modtaget fra Arduino: ";
-            for (int i = 0; i < bytesRead; i++) {
-                std::cout << buffer[i];
+            for (int i = 0; i < bytesRead; ++i) {
+                if (isprint(buffer[i])) {
+                    std::cout << buffer[i];
+                }
             }
             std::cout << std::endl;
         } else {
