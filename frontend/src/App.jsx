@@ -11,6 +11,7 @@ function App() {
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
+  const [aflyser, setAflyser] = useState(false);
 
   const API_BASE = "http://localhost:5000";
 
@@ -82,6 +83,9 @@ function App() {
   };
 
   const aflysBestilling = async () => {
+    if (aflyser) return;
+    setAflyser(true);
+
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       const data = await res.json();
@@ -91,6 +95,7 @@ function App() {
       }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
+      setFejl("Kunne ikke annullere.");
     }
 
     setValg("");
@@ -99,6 +104,7 @@ function App() {
     setBrygger(false);
     setStatus("");
     setFejl("");
+    setAflyser(false);
   };
 
   return (
@@ -144,7 +150,7 @@ function App() {
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
           Start brygning
         </button>
-        <button onClick={aflysBestilling} className="cancel-btn">
+        <button onClick={aflysBestilling} className="cancel-btn" disabled={aflyser}>
           Afbryd
         </button>
 
