@@ -103,7 +103,6 @@ function App() {
   return (
     <div className="App">
       <div className="header">
-        <img src="/kaffekop.png" alt="Kaffeautomat Logo" className="logo" />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
           Scan dit kort og vælg med stil – snart er der kaffe i din fil.
