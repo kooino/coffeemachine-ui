@@ -10,7 +10,7 @@
 int main() {
     const char *device = "/dev/i2c-1";   // I2C-bus
     int addr = 0x08;                     // Arduino-slaveadresse
-    char buffer[32] = {0};               // Buffer til data
+    char buffer[32];                     // Buffer til data
 
     int file = open(device, O_RDWR);
     if (file < 0) {
@@ -29,7 +29,11 @@ int main() {
 
         int bytesRead = read(file, buffer, sizeof(buffer));
         if (bytesRead > 0) {
-            std::cout << "Modtaget fra Arduino: " << buffer << std::endl;
+            std::cout << "Modtaget fra Arduino: ";
+            for (int i = 0; i < bytesRead; i++) {
+                std::cout << buffer[i];
+            }
+            std::cout << std::endl;
         } else {
             std::cerr << "Fejl ved læsning fra Arduino." << std::endl;
         }
