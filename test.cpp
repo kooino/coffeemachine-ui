@@ -4,16 +4,6 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
-#include <cctype>
-
-// Hjælpefunktion til at trimme ikke-tal fra slutningen
-std::string trimToDigits(const std::string& src) {
-    size_t start = 0;
-    while (start < src.size() && !isdigit(src[start])) start++;
-    size_t end = start;
-    while (end < src.size() && isdigit(src[end])) end++;
-    return src.substr(start, end - start);
-}
 
 int main() {
     const char* device = "/dev/i2c-1";
@@ -34,20 +24,14 @@ int main() {
 
     int bytesRead = read(file, buffer, sizeof(buffer) - 1);
     if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
+        buffer[bytesRead] = '\0'; // Sikrer null-terminering
         std::string uid(buffer);
-        std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
 
-        // Trim UID til kun at indeholde tal
-        std::string trimmed = trimToDigits(uid);
+        // Fjerner eventuelle ikke-udskrivbare tegn fra starten/slutningen
+        uid.erase(0, uid.find_first_of("0123456789"));
+        uid.erase(uid.find_last_of("0123456789") + 1);
 
-        try {
-            unsigned long uidNum = std::stoul(trimmed);
-            std::cout << "UID som tal: " << uidNum << std::endl;
-        } catch (...) {
-            std::cerr << "❌ Kunne ikke konvertere UID til tal. Trimmet streng var: '" << trimmed << "'\n";
-        }
-
+        std::cout << "✅ UID modtaget fra Arduino som tekst: " << uid << std::endl;
     } else {
         std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
     }
