@@ -112,7 +112,15 @@ void sendI2CCommand(const std::string& cmd) {
     }
 
     close(file);
-    usleep(100000); // lille forsinkelse
+    usleep(100000);
+}
+
+std::string filtrerUID(const std::string& input) {
+    std::string resultat;
+    for (char c : input) {
+        if (isdigit(c)) resultat += c;
+    }
+    return resultat;
 }
 
 int main() {
@@ -172,15 +180,11 @@ int main() {
             int file = open(i2c_dev, O_RDWR);
 
             if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR) >= 0) {
-                char buffer[16] = {0};
+                char buffer[32] = {0};  // større buffer for at fange alt
                 int bytes = read(file, buffer, sizeof(buffer));
                 if (bytes > 0) {
-                    uid = std::string(buffer, bytes);
-
-                    // Trim mellemrum og linjeskift
-                    uid.erase(0, uid.find_first_not_of(" \t\n\r"));
-                    uid.erase(uid.find_last_not_of(" \t\n\r") + 1);
-
+                    std::string raw(buffer, bytes);
+                    uid = filtrerUID(raw);  // kun tal beholdes
                     std::cout << "✅ UID modtaget fra Arduino: '" << uid << "'" << std::endl;
                 } else {
                     std::cerr << "❌ Ingen UID læst fra Arduino" << std::endl;
