@@ -1,5 +1,3 @@
-// backend/main.cpp (komplet version med I2C UID-læsning fra Arduino)
-
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -56,7 +54,7 @@ void logBestilling(const std::string& valg) {
         std::time_t tid = std::chrono::system_clock::to_time_t(now);
         std::tm* now_tm = std::localtime(&tid);
         std::ostringstream oss;
-        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \""
+        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \"" 
             << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
         write(fd, oss.str().c_str(), oss.str().length());
         close(fd);
@@ -114,7 +112,7 @@ void sendI2CCommand(const std::string& cmd) {
     }
 
     close(file);
-    usleep(100000);
+    usleep(100000); // lille forsinkelse
 }
 
 int main() {
@@ -178,7 +176,12 @@ int main() {
                 int bytes = read(file, buffer, sizeof(buffer));
                 if (bytes > 0) {
                     uid = std::string(buffer, bytes);
-                    std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
+
+                    // Trim mellemrum og linjeskift
+                    uid.erase(0, uid.find_first_not_of(" \t\n\r"));
+                    uid.erase(uid.find_last_not_of(" \t\n\r") + 1);
+
+                    std::cout << "✅ UID modtaget fra Arduino: '" << uid << "'" << std::endl;
                 } else {
                     std::cerr << "❌ Ingen UID læst fra Arduino" << std::endl;
                 }
