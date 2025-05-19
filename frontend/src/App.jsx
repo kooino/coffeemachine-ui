@@ -1,6 +1,4 @@
-// frontend/src/App.js
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
@@ -14,28 +12,35 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Poll kortstatus hvert sekund
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/tjek-kort`);
+        const data = await res.json();
+        setKortOK(data.kortOK || false);
+      } catch (err) {
+        console.error("Fejl ved hentning af kortstatus:", err);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const confirmValg = async () => {
-    if (!valg) {
-      setFejl("Vælg en drik først!");
-      return;
-    }
+    if (!valg) return setFejl("Vælg en drik først!");
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain",
-        },
+        headers: { "Content-Type": "text/plain" },
         body: valg,
       });
-
-      if (!res.ok) throw new Error("HTTP-fejl ved valg");
-
       const data = await res.json();
       if (data.status === "Valg gemt") {
         setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 3000);
       } else {
-        setFejl("Kunne ikke gemme valg.");
+        setFejl(data.error || "Kunne ikke gemme valg.");
       }
     } catch (error) {
       console.error(error);
@@ -43,43 +48,15 @@ function App() {
     }
   };
 
-  const scanKort = async () => {
-    setFejl("");
-    try {
-      const res = await fetch(`${API_BASE}/tjek-kort`);
-      if (!res.ok) throw new Error("HTTP-fejl ved kortscan");
-
-      const data = await res.json();
-      setKortOK(data.kortOK);
-
-      if (!data.kortOK) {
-        setFejl("Kort ugyldigt!");
-      }
-    } catch (error) {
-      console.error(error);
-      setFejl("Fejl ved scanning af kort!");
-    }
-  };
-
   const startBrygning = async () => {
-    if (!kortOK) {
-      setFejl("Kort ikke godkendt!");
-      return;
-    }
-
+    if (!kortOK) return setFejl("Kort ikke godkendt!");
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik ...");
 
     try {
-      const res = await fetch(`${API_BASE}/bestil`, {
-        method: "POST",
-      });
-
-      if (!res.ok) throw new Error("HTTP-fejl ved bestilling");
-
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
-
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
@@ -93,12 +70,17 @@ function App() {
       setStatus("");
     } finally {
       setValg("");
-      setKortOK(false);
       setBrygger(false);
     }
   };
 
-  const aflysBestilling = () => {
+  const aflysBestilling = async () => {
+    try {
+      await fetch(`${API_BASE}/annuller`, { method: "POST" });
+    } catch (err) {
+      console.error("Fejl ved annullering:", err);
+    }
+
     setValg("");
     setKortOK(false);
     setShowPopup(false);
@@ -109,9 +91,20 @@ function App() {
 
   return (
     <div className="App">
-      <div className="container">
-        <h1>☕ Kaffeautomat ☕</h1>
+      <div className="header">
+        <img
+          src="/kaffekop.png"
+          alt="Kaffeautomat Logo"
+          className="logo"
+          onError={(e) => (e.target.style.display = "none")}
+        />
+        <h1>☕ Velkommen til Kaffeautomaten</h1>
+        <p className="subheading">
+          Scan dit kort, vælg en drik – og nyd sulaimans drik
+        </p>
+      </div>
 
+      <div className="container">
         <h2>1. Vælg drik</h2>
         <select value={valg} onChange={(e) => setValg(e.target.value)}>
           <option value="">-- Vælg --</option>
@@ -119,10 +112,9 @@ function App() {
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
         </select>
-        <br />
         <button onClick={confirmValg}>Bekræft valg</button>
 
-        {showPopup && (
+        {showPopup && valg && (
           <SuccessPopup
             message={`✅ Valg gemt: ${valg}`}
             onClose={() => setShowPopup(false)}
@@ -130,13 +122,10 @@ function App() {
         )}
 
         <h2>2. Scan kort</h2>
-        <button onClick={scanKort}>Scan kort</button>
-
-        <h3>Status:</h3>
         <p>
           {kortOK
-            ? "✅ Kort godkendt!"
-            : "❌ Kort ikke godkendt endnu!"}
+            ? "✅ Kort godkendt! Du kan nu starte brygning."
+            : "⌛ Vent på godkendt kort..."}
         </p>
 
         <h2>3. Start brygning</h2>
@@ -147,17 +136,8 @@ function App() {
           Afbryd
         </button>
 
-        {status && (
-          <div className="status-box">
-            <strong>{status}</strong>
-          </div>
-        )}
-
-        {fejl && (
-          <div className="error-box">
-            <strong>{fejl}</strong>
-          </div>
-        )}
+        {status && <div className="status-box"><strong>{status}</strong></div>}
+        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
       </div>
     </div>
   );
