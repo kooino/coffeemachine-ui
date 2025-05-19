@@ -19,8 +19,16 @@ function App() {
         const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
+
+        // Hvis kort ikke er OK og der er fejlbesked, vis den
+        if (!data.kortOK && data.error) {
+          setFejl(data.error);
+        } else {
+          setFejl("");
+        }
       } catch (err) {
         console.error("Fejl ved hentning af kortstatus:", err);
+        setFejl("Forbindelsesfejl til server");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -76,7 +84,12 @@ function App() {
 
   const aflysBestilling = async () => {
     try {
-      await fetch(`${API_BASE}/annuller`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
+      const data = await res.json();
+      if (data.status === "Annulleret") {
+        setStatus("Bestilling annulleret.");
+        setTimeout(() => setStatus(""), 3000);
+      }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
     }
@@ -85,7 +98,6 @@ function App() {
     setKortOK(false);
     setShowPopup(false);
     setBrygger(false);
-    setStatus("");
     setFejl("");
   };
 
@@ -100,7 +112,7 @@ function App() {
         />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Scan dit kort, vælg en drik – og nyd sulaimans drik
+          Scan dit kort, vælg en drik – og nyd din kaffe i ro og mag.
         </p>
       </div>
 
