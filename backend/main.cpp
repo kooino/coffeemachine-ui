@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <nfc/nfc.h>
+#include <fcntl.h>
 
 #define PORT 5000
 
@@ -67,6 +68,39 @@ std::string hentBestillinger() {
     return result;
 }
 
+void aktiverPumpe(int pin = 17, int varighedSek = 5) {
+    std::ostringstream path;
+    path << "/sys/class/gpio/gpio" << pin;
+
+    // Eksporter GPIO hvis nødvendigt
+    if (access(path.str().c_str(), F_OK) == -1) {
+        std::ofstream eksport("/sys/class/gpio/export");
+        eksport << pin;
+        eksport.close();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    // Sæt som output
+    std::ofstream dir(path.str() + "/direction");
+    dir << "out";
+    dir.close();
+
+    // Tænd pumpen
+    std::ofstream ud(path.str() + "/value");
+    ud << "1";
+    ud.close();
+
+    std::cout << "🟢 Pumpe aktiveret (" << varighedSek << " sekunder)..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(varighedSek));
+
+    // Sluk pumpen
+    std::ofstream udStop(path.str() + "/value");
+    udStop << "0";
+    udStop.close();
+
+    std::cout << "🔴 Pumpe slukket." << std::endl;
+}
+
 void startNFC() {
     nfc_context *context;
     nfc_device *pnd;
@@ -100,7 +134,7 @@ void startNFC() {
                 }
 
                 skrivTilFil("kort.txt", erGodkendt ? "1" : "0");
-                std::cout << "Kort læst: " << uidStr << (erGodkendt ? " ✅" : " ❌") << std::endl;
+                std::cout << "📶 Kort læst: " << uidStr << (erGodkendt ? " ✅" : " ❌") << std::endl;
             }
             sleep(1);
         }
@@ -148,6 +182,7 @@ int main() {
             std::string kortStatus = læsFraFil("kort.txt");
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
+                aktiverPumpe();  // Aktiver pumpen via GPIO
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"Bestilling gennemført\"}";
