@@ -10,10 +10,12 @@
 #include <ctime>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <nfc/nfc.h>
+#include <fcntl.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
 #define PORT 5000
+#define I2C_ADDR 0x08
 
 std::mutex dataMutex;
 std::string senesteUID = "";
@@ -67,52 +69,48 @@ std::string hentBestillinger() {
     return result;
 }
 
-void startNFC() {
-    nfc_context *context;
-    nfc_device *pnd;
-    nfc_init(&context);
-    if (!context) return;
+std::string læsUIDfraArduino() {
+    const char* device = "/dev/i2c-1";
+    int file = open(device, O_RDWR);
+    if (file < 0) return "";
 
-    pnd = nfc_open(context, nullptr);
-    if (!pnd) return;
-
-    if (nfc_initiator_init(pnd) < 0) return;
-
-    const nfc_modulation nm = { NMT_ISO14443A, NBR_106 };
-    nfc_target nt;
-
-    while (true) {
-        if (nfc_initiator_select_passive_target(pnd, nm, nullptr, 0, &nt) > 0) {
-            if (nt.nti.nai.szUidLen == 4) {
-                uint32_t uid_int = 0;
-                uid_int |= (nt.nti.nai.abtUid[0] << 24);
-                uid_int |= (nt.nti.nai.abtUid[1] << 16);
-                uid_int |= (nt.nti.nai.abtUid[2] << 8);
-                uid_int |= nt.nti.nai.abtUid[3];
-
-                std::string uidStr = std::to_string(uid_int);
-                bool erGodkendt = checkKort(uidStr);
-
-                {
-                    std::lock_guard<std::mutex> lock(dataMutex);
-                    senesteUID = uidStr;
-                    kortOK = erGodkendt;
-                }
-
-                skrivTilFil("kort.txt", erGodkendt ? "1" : "0");
-                std::cout << "Kort læst: " << uidStr << (erGodkendt ? " ✅" : " ❌") << std::endl;
-            }
-            sleep(1);
-        }
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+        close(file);
+        return "";
     }
 
-    nfc_close(pnd);
-    nfc_exit(context);
+    char buffer[32] = {0};
+    ssize_t n = read(file, buffer, sizeof(buffer) - 1);
+    close(file);
+
+    if (n > 0) {
+        buffer[n] = '\0';
+        return std::string(buffer);
+    }
+
+    return "";
+}
+
+void startI2CListener() {
+    while (true) {
+        std::string uid = læsUIDfraArduino();
+        if (!uid.empty() && uid != senesteUID) {
+            bool erGodkendt = checkKort(uid);
+            {
+                std::lock_guard<std::mutex> lock(dataMutex);
+                senesteUID = uid;
+                kortOK = erGodkendt;
+            }
+            skrivTilFil("kort.txt", erGodkendt ? "1" : "0");
+            std::cout << "📶 UID fra Arduino: " << uid << (erGodkendt ? " ✅" : " ❌") << std::endl;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
 }
 
 int main() {
-    std::thread nfcTråd(startNFC);
-    nfcTråd.detach();
+    std::thread i2cTråd(startI2CListener);
+    i2cTråd.detach();
 
     int server_fd, ny_socket;
     struct sockaddr_in adresse;
