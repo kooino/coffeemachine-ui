@@ -1,3 +1,5 @@
+// FRONTEND: App.jsx
+
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -9,18 +11,16 @@ function App() {
   const [brygger, setBrygger] = useState(false);
   const [status, setStatus] = useState("");
   const [fejl, setFejl] = useState("");
+  const [aflyser, setAflyser] = useState(false);
 
   const API_BASE = "http://localhost:5000";
 
-  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
-
-        // Hvis kort ikke er OK og der er fejlbesked, vis den
         if (!data.kortOK && data.error) {
           setFejl(data.error);
         } else {
@@ -83,6 +83,8 @@ function App() {
   };
 
   const aflysBestilling = async () => {
+    if (aflyser) return;
+    setAflyser(true);
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       const data = await res.json();
@@ -92,13 +94,16 @@ function App() {
       }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
+      setFejl("Kunne ikke annullere.");
     }
 
     setValg("");
     setKortOK(false);
     setShowPopup(false);
     setBrygger(false);
+    setStatus("");
     setFejl("");
+    setAflyser(false);
   };
 
   return (
@@ -134,17 +139,13 @@ function App() {
         )}
 
         <h2>2. Scan kort</h2>
-        <p>
-          {kortOK
-            ? "✅ Kort godkendt! Du kan nu starte brygning."
-            : "⌛ Vent på godkendt kort..."}
-        </p>
+        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på godkendt kort..."}</p>
 
         <h2>3. Start brygning</h2>
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
           Start brygning
         </button>
-        <button onClick={aflysBestilling} className="cancel-btn">
+        <button onClick={aflysBestilling} className="cancel-btn" disabled={aflyser}>
           Afbryd
         </button>
 
