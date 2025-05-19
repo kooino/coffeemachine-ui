@@ -1,5 +1,3 @@
-// FRONTEND: App.jsx
-
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -21,14 +19,10 @@ function App() {
         const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
-        if (!data.kortOK && data.error) {
-          setFejl(data.error);
-        } else {
-          setFejl("");
-        }
+        setFejl(data.error || "");
       } catch (err) {
-        console.error("Fejl ved hentning af kortstatus:", err);
-        setFejl("Forbindelsesfejl til server");
+        console.error("Fejl ved kortstatus:", err);
+        setFejl("Kan ikke hente kortstatus");
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -52,7 +46,7 @@ function App() {
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved valg. Prøv igen!");
+      setFejl("Fejl ved valg.");
     }
   };
 
@@ -68,13 +62,13 @@ function App() {
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
-      } else if (data.error) {
+      } else {
         setFejl(data.error);
         setStatus("");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved brygning!");
+      setFejl("Fejl under brygning!");
       setStatus("");
     } finally {
       setValg("");
@@ -85,6 +79,7 @@ function App() {
   const aflysBestilling = async () => {
     if (aflyser) return;
     setAflyser(true);
+
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       const data = await res.json();
@@ -94,7 +89,6 @@ function App() {
       }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
-      setFejl("Kunne ikke annullere.");
     }
 
     setValg("");
@@ -109,16 +103,9 @@ function App() {
   return (
     <div className="App">
       <div className="header">
-        <img
-          src="/kaffekop.png"
-          alt="Kaffeautomat Logo"
-          className="logo"
-          onError={(e) => (e.target.style.display = "none")}
-        />
+        <img src="/kaffekop.png" alt="Kaffeautomat Logo" className="logo" />
         <h1>☕ Velkommen til Kaffeautomaten</h1>
-        <p className="subheading">
-          Scan dit kort, vælg en drik – og nyd din kaffe i ro og mag.
-        </p>
+        <p>Scan dit kort og vælg en drik</p>
       </div>
 
       <div className="container">
@@ -131,15 +118,10 @@ function App() {
         </select>
         <button onClick={confirmValg}>Bekræft valg</button>
 
-        {showPopup && valg && (
-          <SuccessPopup
-            message={`✅ Valg gemt: ${valg}`}
-            onClose={() => setShowPopup(false)}
-          />
-        )}
+        {showPopup && <SuccessPopup message={`✅ Valg gemt: ${valg}`} />}
 
         <h2>2. Scan kort</h2>
-        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på godkendt kort..."}</p>
+        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på kort..."}</p>
 
         <h2>3. Start brygning</h2>
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
