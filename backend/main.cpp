@@ -13,8 +13,11 @@
 #include <sys/socket.h>
 #include <nfc/nfc.h>
 #include <fcntl.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
 #define PORT 5000
+#define I2C_ADDR 0x08
 
 std::mutex dataMutex;
 std::string senesteUID = "";
@@ -53,52 +56,27 @@ void logBestilling(const std::string& valg) {
     fil << "{ \"valg\": \"" << valg << "\", \"timestamp\": \"" << std::put_time(std::localtime(&nu), "%Y-%m-%d %H:%M:%S") << "\" },\n";
 }
 
-std::string hentBestillinger() {
-    std::ifstream fil("bestillinger.txt");
-    std::stringstream ss;
-    ss << "[";
-    std::string linje;
-    while (std::getline(fil, linje)) {
-        if (linje.back() == ',') linje.pop_back();
-        ss << linje << ",";
-    }
-    std::string result = ss.str();
-    if (result.back() == ',') result.pop_back();
-    result += "]";
-    return result;
-}
-
-void aktiverPumpe(int pin = 17, int varighedSek = 5) {
-    std::ostringstream path;
-    path << "/sys/class/gpio/gpio" << pin;
-
-    // Eksporter GPIO hvis nødvendigt
-    if (access(path.str().c_str(), F_OK) == -1) {
-        std::ofstream eksport("/sys/class/gpio/export");
-        eksport << pin;
-        eksport.close();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+void sendI2CCommand(const std::string& cmd) {
+    const char* device = "/dev/i2c-1";
+    int file = open(device, O_RDWR);
+    if (file < 0) {
+        perror("❌ Kunne ikke åbne I2C-enhed");
+        return;
     }
 
-    // Sæt som output
-    std::ofstream dir(path.str() + "/direction");
-    dir << "out";
-    dir.close();
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+        perror("❌ Kunne ikke sætte I2C-slaveadresse");
+        close(file);
+        return;
+    }
 
-    // Tænd pumpen
-    std::ofstream ud(path.str() + "/value");
-    ud << "1";
-    ud.close();
+    if (write(file, cmd.c_str(), cmd.length()) != (ssize_t)cmd.length()) {
+        perror("❌ Fejl ved skrivning til I2C");
+    } else {
+        std::cout << "📤 I2C sendt: " << cmd << std::endl;
+    }
 
-    std::cout << "🟢 Pumpe aktiveret (" << varighedSek << " sekunder)..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(varighedSek));
-
-    // Sluk pumpen
-    std::ofstream udStop(path.str() + "/value");
-    udStop << "0";
-    udStop.close();
-
-    std::cout << "🔴 Pumpe slukket." << std::endl;
+    close(file);
 }
 
 void startNFC() {
@@ -173,6 +151,12 @@ int main() {
             if (bodyStart != std::string::npos) {
                 gemtValg = request.substr(bodyStart + 4);
                 skrivTilFil("valg.txt", gemtValg);
+
+                // Send mode til Arduino
+                if (gemtValg == "Te") sendI2CCommand("mode:1");
+                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
+                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
+
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
@@ -182,7 +166,7 @@ int main() {
             std::string kortStatus = læsFraFil("kort.txt");
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                aktiverPumpe();  // Aktiver pumpen via GPIO
+                sendI2CCommand("start");  // Aktiver brygning via Arduino
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"Bestilling gennemført\"}";
