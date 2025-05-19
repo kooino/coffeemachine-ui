@@ -4,11 +4,10 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <cstring>
-#include <cctype>
 
 int main() {
     const char* device = "/dev/i2c-1";
-    const int arduinoAddress = 0x08;
+    int address = 0x08;
     char buffer[32] = {0};
 
     int file = open(device, O_RDWR);
@@ -17,7 +16,7 @@ int main() {
         return 1;
     }
 
-    if (ioctl(file, I2C_SLAVE, arduinoAddress) < 0) {
+    if (ioctl(file, I2C_SLAVE, address) < 0) {
         std::cerr << "❌ Kan ikke sætte I2C-slaveadresse.\n";
         close(file);
         return 1;
@@ -25,19 +24,8 @@ int main() {
 
     int bytesRead = read(file, buffer, sizeof(buffer));
     if (bytesRead > 0) {
-        std::cout << "Rådata (hex): ";
-        for (int i = 0; i < bytesRead; i++) {
-            printf("%02X ", (unsigned char)buffer[i]);
-        }
-        std::cout << std::endl;
-
-        // Udtræk kun cifre
-        std::string uid;
-        for (int i = 0; i < bytesRead; i++) {
-            if (isdigit(buffer[i])) uid += buffer[i];
-        }
-
-        std::cout << "✅ UID modtaget fra Arduino som tekst: '" << uid << "'" << std::endl;
+        std::string uid(buffer, bytesRead);
+        std::cout << "✅ UID modtaget fra Arduino: " << uid << std::endl;
     } else {
         std::cerr << "❌ Fejl ved læsning fra Arduino.\n";
     }
