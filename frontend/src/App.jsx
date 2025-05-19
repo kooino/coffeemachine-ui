@@ -1,3 +1,5 @@
+// FRONTEND: App.jsx
+
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
@@ -12,15 +14,12 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
-
-        // Hvis kort ikke er OK og der er fejlbesked, vis den
         if (!data.kortOK && data.error) {
           setFejl(data.error);
         } else {
@@ -98,6 +97,7 @@ function App() {
     setKortOK(false);
     setShowPopup(false);
     setBrygger(false);
+    setStatus("");
     setFejl("");
   };
 
