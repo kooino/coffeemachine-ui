@@ -18,17 +18,24 @@ function App() {
       try {
         const res = await fetch(`${API_BASE}/seneste-uid`);
         const data = await res.json();
-        setUid(data.uid || "");
-        setKortOK(data.valid || false);
+        if (data.uid) {
+          setUid(data.uid);
+          setKortOK(data.valid);
+        } else {
+          setUid("");
+          setKortOK(false);
+        }
       } catch (err) {
         console.error("Fejl ved hentning af UID:", err);
+        setUid("");
+        setKortOK(false);
       }
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
   const confirmValg = async () => {
-    if (!valg) return setFejl("Vælg en drik først!");
+    if (!valg) return setFejl("❗ Vælg en drik først!");
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
@@ -44,29 +51,29 @@ function App() {
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved valg. Prøv igen!");
+      setFejl("Netværksfejl ved valg. Prøv igen.");
     }
   };
 
   const startBrygning = async () => {
-    if (!kortOK) return setFejl("Kort ikke godkendt!");
+    if (!kortOK) return setFejl("❗ Kort ikke godkendt!");
     setFejl("");
     setBrygger(true);
-    setStatus("Brygger din drik ...");
+    setStatus("⏳ Brygger din drik ...");
 
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
       if (data.status === "Bestilling gennemført") {
         setStatus("☕ Din drik er klar! Tag din kop.");
-        setTimeout(() => setStatus(""), 4000);
-      } else if (data.error) {
-        setFejl(data.error);
+        setTimeout(() => setStatus(""), 5000);
+      } else {
+        setFejl(data.error || "Uventet fejl ved bestilling.");
         setStatus("");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl ved brygning!");
+      setFejl("Netværksfejl ved brygning.");
       setStatus("");
     } finally {
       setValg("");
@@ -123,11 +130,13 @@ function App() {
         )}
 
         <h2>2. Scan kort</h2>
-        <p><strong>UID:</strong> {uid || "⌛ Venter på kort..."}</p>
-        <p>{uid ? (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt endnu!") : ""}</p>
+        <p><strong>UID:</strong> {uid ? uid : "⌛ Venter på kort..."}</p>
+        <p>{uid && (kortOK ? "✅ Kort godkendt!" : "❌ Kort ikke godkendt")}</p>
 
         <h2>3. Start brygning</h2>
-        <button onClick={startBrygning} disabled={!kortOK || brygger}>Start brygning</button>
+        <button onClick={startBrygning} disabled={!kortOK || brygger}>
+          Start brygning
+        </button>
         <button onClick={aflysBestilling} className="cancel-btn">Afbryd</button>
 
         {status && <div className="status-box"><strong>{status}</strong></div>}
