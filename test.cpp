@@ -1,6 +1,7 @@
 #include <nfc/nfc.h>
 #include <iostream>
 #include <iomanip>
+#include <cstdint>
 
 int main() {
     nfc_context *context;
@@ -45,13 +46,13 @@ int main() {
         }
 
         if (res > 0) {
-            // Print UID
-            std::cout << "Tag found, UID: ";
+            // Konverter UID bytes til samlet decimal tal
+            uint32_t uidNumber = 0;
             for (size_t i = 0; i < nt.nti.nai.szUidLen; i++) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0')
-                          << (int)nt.nti.nai.abtUid[i] << " ";
+                uidNumber = (uidNumber << 8) | nt.nti.nai.abtUid[i];
             }
-            std::cout << std::dec << std::endl;
+
+            std::cout << "UID samlet decimal: " << uidNumber << std::endl;
 
             // Vent indtil tag fjernes for at scanne næste
             std::cout << "Fjern kortet for at scanne næste..." << std::endl;
