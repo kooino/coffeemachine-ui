@@ -71,7 +71,7 @@ void scanningThread() {
         if (res > 0) {
             uint32_t uidNum = 0;
             for (size_t i = 0; i < target.nti.nai.szUidLen; i++)
-                uidNum = (uidNum << 😎 | target.nti.nai.abtUid[i];
+                uidNum = (uidNum << 8) | target.nti.nai.abtUid[i];
 
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
@@ -107,7 +107,7 @@ int main() {
     struct sockaddr_in address = {AF_INET, htons(PORT), INADDR_ANY};
     bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     listen(server_fd, 10);
-    std::cout << "✅ Backend kører på http://localhost:" << PORT << "\n";
+    std::cout << "Backend kører på http://localhost:" << PORT << "\n";
 
     std::thread t(scanningThread);
 
@@ -127,7 +127,7 @@ int main() {
                 else if (gemtValg == "Lille kaffe") sendI2C("mode:2");
                 else if (gemtValg == "Stor kaffe") sendI2C("mode:3");
 
-                res = "{\"status\"😕"Valg gemt\"}";
+                res = "{\"status\":\"Valg gemt\"}";
             }
         }
         else if (req.find("GET /tjek-kort") != std::string::npos) {
@@ -145,15 +145,15 @@ int main() {
                 sendI2C("s");
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
-                res = "{\"status\"😕"OK\"}";
-            } else res = "{\"error\"😕"Ugyldig anmodning\"}";
+                res = "{\"status\":\"OK\"}";
+            } else res = "{\"error\":\"Ugyldig anmodning\"}";
         }
         else if (req.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            res = "{\"status\"😕"Annulleret\"}";
+            res = "{\"status\":\"Annulleret\"}";
         }
-        else res = "{\"message\"😕"Kaffeautomat API\"}";
+        else res = "{\"message\":\"Kaffeautomat API\"}";
 
         std::string http =
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: "
