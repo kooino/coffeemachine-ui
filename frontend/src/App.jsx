@@ -13,19 +13,21 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/tjek-kort`);
+        if (!res.ok) throw new Error("Netværksfejl");
         const data = await res.json();
         setKortOK(data.kortOK || false);
-        if (data.error) setFejl(data.error);
-        else setFejl("");
-      } catch {
+        setFejl(data.error || "");
+      } catch (err) {
         setFejl("Kan ikke hente kortstatus");
         setKortOK(false);
       }
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -41,6 +43,7 @@ function App() {
         headers: { "Content-Type": "text/plain" },
         body: valg,
       });
+      if (!res.ok) throw new Error("Fejl ved gem-valg");
       const data = await res.json();
       if (data.status === "Valg gemt") {
         setShowPopup(true);
@@ -48,7 +51,7 @@ function App() {
       } else {
         setFejl(data.error || "Kunne ikke gemme valg.");
       }
-    } catch {
+    } catch (error) {
       setFejl("Fejl ved valg.");
     }
   };
@@ -64,6 +67,7 @@ function App() {
 
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
+      if (!res.ok) throw new Error("Fejl ved bestil");
       const data = await res.json();
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
@@ -86,6 +90,7 @@ function App() {
     setAflyser(true);
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
+      if (!res.ok) throw new Error("Fejl ved annuller");
       const data = await res.json();
       if (data.status === "Annulleret") {
         setStatus("Bestilling annulleret.");
