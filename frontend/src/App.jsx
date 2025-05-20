@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
 function App() {
   const [valg, setValg] = useState("");
-  const [kortID, setKortID] = useState("");
   const [kortOK, setKortOK] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [brygger, setBrygger] = useState(false);
@@ -14,30 +13,23 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  const confirmKort = async () => {
-    if (!kortID) {
-      setFejl("Indtast kort-ID!");
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/tjek-kort`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: kortID,
-      });
-      const data = await res.json();
-      if (data.kortOK) {
-        setKortOK(true);
-        setFejl("");
-      } else {
-        setKortOK(false);
-        setFejl(data.error || "Kort ikke godkendt.");
+  // Poll kortstatus hvert sekund
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/tjek-kort`);
+        const data = await res.json();
+        setKortOK(data.kortOK || false);
+        if (data.error) setFejl(data.error);
+        else setFejl("");
+      } catch (err) {
+        console.error("Fejl ved kortstatus:", err);
+        setFejl("Kan ikke hente kortstatus");
       }
-    } catch (err) {
-      console.error("Fejl ved kortbekræftelse:", err);
-      setFejl("Netværksfejl ved kortbekræftelse.");
-    }
-  };
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const confirmValg = async () => {
     if (!valg) {
@@ -109,7 +101,6 @@ function App() {
     }
 
     setValg("");
-    setKortID("");
     setKortOK(false);
     setShowPopup(false);
     setBrygger(false);
@@ -123,7 +114,7 @@ function App() {
       <div className="header">
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Indtast dit kort-ID og vælg din favoritdrik!
+          Scan dit kort og vælg med stil – snart kigger IDO Service forbi.
         </p>
       </div>
 
@@ -139,15 +130,8 @@ function App() {
 
         {showPopup && <SuccessPopup message={`✅ Valg gemt: ${valg}`} />}
 
-        <h2>2. Indtast kort-ID</h2>
-        <input
-          type="text"
-          value={kortID}
-          onChange={(e) => setKortID(e.target.value)}
-          placeholder="F.eks. 123456789"
-        />
-        <button onClick={confirmKort}>Bekræft kort</button>
-        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Kort ikke bekræftet endnu"}</p>
+        <h2>2. Scan kort</h2>
+        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på kort..."}</p>
 
         <h2>3. Start brygning</h2>
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
