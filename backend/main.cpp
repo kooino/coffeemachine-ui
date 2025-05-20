@@ -1,4 +1,3 @@
-Idris
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -32,11 +31,11 @@ void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
     if (file < 0) {
-        perror("❌ I2C open (pumpe)");
+        perror("I2C open (pumpe)");
         return;
     }
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_PUMPE) < 0) {
-        perror("❌ I2C ioctl (pumpe)");
+        perror("I2C ioctl (pumpe)");
         close(file);
         return;
     }
@@ -49,19 +48,19 @@ void sendMotorCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
     if (file < 0) {
-        perror("❌ I2C open (motor)");
+        perror("I2C open (motor)");
         return;
     }
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) < 0) {
-        perror("❌ I2C ioctl (motor)");
+        perror("I2C ioctl (motor)");
         close(file);
         return;
     }
     char buf[1] = { mode };
     if (write(file, buf, 1) != 1) {
-        perror("❌ Write motor");
+        perror("Write motor");
     } else {
-        std::cout << "✅ Sendt til motor: '" << mode << "' (" << (int)mode << ")" << std::endl;
+        std::cout << "Sendt til motor: '" << mode << "' (" << (int)mode << ")" << std::endl;
     }
     close(file);
     usleep(100000);
@@ -83,9 +82,17 @@ void scanningThread() {
     nfc_context* context = nullptr;
     nfc_device* pnd = nullptr;
     nfc_init(&context);
-    if (!context) return;
+    if (!context) {
+        std::cerr << "libnfc fejl\n";
+        return;
+    }
     pnd = nfc_open(context, nullptr);
-    if (!pnd || nfc_initiator_init(pnd) < 0) return;
+    if (!pnd || nfc_initiator_init(pnd) < 0) {
+        std::cerr << "NFC fejl\n";
+        if (pnd) nfc_close(pnd);
+        nfc_exit(context);
+        return;
+    }
     const nfc_modulation mod[1] = {{NMT_ISO14443A, NBR_106}};
     nfc_target target;
 
@@ -94,7 +101,7 @@ void scanningThread() {
         if (res > 0) {
             uint32_t uidNum = 0;
             for (size_t i = 0; i < target.nti.nai.szUidLen; i++)
-                uidNum = (uidNum << 😎 | target.nti.nai.abtUid[i];
+                uidNum = (uidNum << 8) | target.nti.nai.abtUid[i];
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
                 senesteUID = std::to_string(uidNum);
@@ -112,11 +119,13 @@ void scanningThread() {
 }
 
 void skrivTilFil(const std::string& fil, const std::string& data) {
-    std::ofstream f(fil); if (f) f << data;
+    std::ofstream f(fil);
+    if (f) f << data;
 }
 
 std::string læsFraFil(const std::string& fil) {
-    std::ifstream f(fil); std::ostringstream ss;
+    std::ifstream f(fil);
+    std::ostringstream ss;
     if (f) ss << f.rdbuf();
     return ss.str();
 }
@@ -147,14 +156,24 @@ std::string hentBestillinger() {
 int main() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in address = {AF_INET, htons(PORT), INADDR_ANY};
-    bind(server_fd, (struct sockaddr*)&address, sizeof(address));
-    listen(server_fd, 10);
-    std::cout << "✅ Backend kører på http://localhost:" << PORT << "\n";
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+        perror("Bind fejl");
+        return 1;
+    }
+    if (listen(server_fd, 10) < 0) {
+        perror("Lyt fejl");
+        return 1;
+    }
+    std::cout << "Backend kører på http://localhost:" << PORT << "\n";
 
     std::thread t(scanningThread);
 
     while (true) {
         int client = accept(server_fd, nullptr, nullptr);
+        if (client < 0) {
+            perror("Accept fejl");
+            continue;
+        }
         char buffer[30000] = {0};
         read(client, buffer, sizeof(buffer));
         std::string req(buffer), res;
@@ -176,7 +195,7 @@ int main() {
                     sendMotorCommand('3');
                 }
 
-                res = "{\"status\"😕"Valg gemt\"}";
+                res = "{\"status\":\"Valg gemt\"}";
             }
         }
         else if (req.find("GET /tjek-kort") != std::string::npos) {
@@ -188,7 +207,9 @@ int main() {
             uid = filtrerUID(uid);
             bool ok = !uid.empty() && checkKort(uid);
             skrivTilFil("kort.txt", ok ? "1" : "0");
-            res = ok ? "{\"kortOK\": true}" : uid.empty() ? "{\"kortOK\": false}" : "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
+            if (uid.empty()) res = "{\"kortOK\": false}";
+            else if (!ok) res = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
+            else res = "{\"kortOK\": true}";
         }
         else if (req.find("POST /bestil") != std::string::npos) {
             std::string kort = læsFraFil("kort.txt");
@@ -198,29 +219,32 @@ int main() {
                 sendI2CCommand("s");
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
-                res = "{\"status\"😕"OK\"}";
+                res = "{\"status\":\"OK\"}";
             } else {
-                res = "{\"error\"😕"Ugyldig anmodning\"}";
+                res = "{\"error\":\"Ugyldig anmodning\"}";
             }
         }
         else if (req.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            res = "{\"status\"😕"Annulleret\"}";
+            res = "{\"status\":\"Annulleret\"}";
         }
         else if (req.find("GET /bestillinger") != std::string::npos) {
             res = hentBestillinger();
         }
         else {
-            res = "{\"message\"😕"Kaffeautomat API\"}";
+            res = "{\"message\":\"Kaffeautomat API\"}";
         }
 
-        std::string http = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " + std::to_string(res.size()) + "\r\n\r\n" + res;
+        std::string http = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: "
+            + std::to_string(res.size()) + "\r\n\r\n" + res;
+
         send(client, http.c_str(), http.size(), 0);
         close(client);
     }
 
     scanningAktiv = false;
     t.join();
+
     return 0;
 }
