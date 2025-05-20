@@ -95,21 +95,21 @@ void sendI2CCommand(char cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
     if (file < 0) {
-        perror("❌ Kunne ikke åbne I2C-enhed");
+        perror("Kunne ikke åbne I2C-enhed");
         return;
     }
 
     if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        perror("❌ Kunne ikke sætte I2C-slaveadresse");
+        perror("Kunne ikke sætte I2C-slaveadresse");
         close(file);
         return;
     }
 
     ssize_t bytes = write(file, &cmd, 1);
     if (bytes != 1) {
-        perror("❌ Fejl ved skrivning til I2C");
+        perror("Fejl ved skrivning til I2C");
     } else {
-        std::cout << "✅ I2C sendt: '" << cmd << "' (0x" << std::hex << int(cmd) << ")" << std::dec << std::endl;
+        std::cout << "I2C sendt: '" << cmd << "' (0x" << std::hex << int(cmd) << ")" << std::dec << std::endl;
     }
 
     close(file);
@@ -149,7 +149,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
+    std::cout << "Backend server kører på http://localhost:" << PORT << std::endl;
 
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -171,7 +171,7 @@ int main() {
                 else if (gemtValg == "Stor kaffe") sendI2CCommand('3');
 
                 skrivTilFil("valg.txt", gemtValg);
-                responseBody = "{\"status\"😕"Valg gemt\"}";
+                responseBody = "{\"status\":\"Valg gemt\"}";
             }
         }
 
@@ -186,9 +186,9 @@ int main() {
                 if (bytes > 0) {
                     std::string raw(buffer, bytes);
                     uid = filtrerUID(raw);
-                    std::cout << "✅ UID modtaget: '" << uid << "'" << std::endl;
+                    std::cout << "UID modtaget: '" << uid << "'" << std::endl;
                 } else {
-                    std::cerr << "❌ Ingen UID læst" << std::endl;
+                    std::cerr << "Ingen UID læst" << std::endl;
                 }
                 close(file);
             }
@@ -214,16 +214,16 @@ int main() {
                 sendI2CCommand('s');
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
-                responseBody = "{\"status\"😕"OK\"}";
+                responseBody = "{\"status\":\"OK\"}";
             } else {
-                responseBody = "{\"error\"😕"Ugyldig anmodning\"}";
+                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         }
 
         else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            responseBody = "{\"status\"😕"Annulleret\"}";
+            responseBody = "{\"status\":\"Annulleret\"}";
         }
 
         else if (request.find("GET /bestillinger") != std::string::npos) {
@@ -231,7 +231,7 @@ int main() {
         }
 
         else {
-            responseBody = "{\"message\"😕"Kaffeautomat API\"}";
+            responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
         std::string httpResponse =
