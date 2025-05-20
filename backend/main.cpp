@@ -92,6 +92,7 @@ std::string hentBestillinger() {
     return json.str();
 }
 
+// Send mode til motor-Arduino
 void sendMotorModeCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -117,6 +118,7 @@ void sendMotorModeCommand(char mode) {
     usleep(100000);
 }
 
+// Læs UID fra RFID Arduino via I2C
 std::string læsUIDfraRFID() {
     const char* i2cDevice = "/dev/i2c-1";
     int file = open(i2cDevice, O_RDWR);
@@ -140,7 +142,7 @@ std::string læsUIDfraRFID() {
     buffer[bytesRead] = '\0';
 
     std::string uid(buffer);
-    uid.erase(0, uid.find_first_not_of(' '));  // Fjern mellemrum
+    uid.erase(0, uid.find_first_not_of(' '));  // Fjern ledende mellemrum
 
     return uid;
 }
@@ -204,28 +206,6 @@ int main() {
             }
         }
 
-        else if (request.find("POST /tjek-kort") != std::string::npos) {
-            size_t bodyPos = request.find("\r\n\r\n");
-            std::string uid = "";
-            if (bodyPos != std::string::npos) {
-                uid = request.substr(bodyPos + 4);
-                uid = filtrerUID(uid);
-
-                bool kortOK = (!uid.empty() && checkKort(uid));
-                skrivTilFil("kort.txt", kortOK ? "1" : "0");
-
-                if (uid.empty()) {
-                    responseBody = "{\"kortOK\": false, \"error\": \"Intet kort-ID modtaget\"}";
-                } else if (!kortOK) {
-                    responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
-                } else {
-                    responseBody = "{\"kortOK\": true}";
-                }
-            } else {
-                responseBody = "{\"kortOK\": false, \"error\": \"Forkert request\"}";
-            }
-        }
-
         else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid = læsUIDfraRFID();
             uid = filtrerUID(uid);
@@ -248,6 +228,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
+                // sendMotorModeCommand('s'); // Hvis nødvendigt, ellers fjern denne linje
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
