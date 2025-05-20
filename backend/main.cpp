@@ -107,7 +107,7 @@ int main() {
     struct sockaddr_in address = {AF_INET, htons(PORT), INADDR_ANY};
     bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     listen(server_fd, 10);
-    std::cout << "Backend kører på http://localhost:" << PORT << "\n";
+    std::cout << "✅ Backend kører på http://localhost:" << PORT << "\n";
 
     std::thread t(scanningThread);
 
