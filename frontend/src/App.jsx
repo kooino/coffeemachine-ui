@@ -1,155 +1,292 @@
-import React, { useState, useEffect } from "react";
-import "./App.css";
-import SuccessPopup from "./SuccessPopup";
+#include <iostream>
+#include <sstream>
+#include <chrono>
+#include <ctime>
+#include <vector>
+#include <algorithm>
+#include <mutex>
+#include <iomanip>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
-function App() {
-  const [valg, setValg] = useState("");
-  const [kortOK, setKortOK] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [brygger, setBrygger] = useState(false);
-  const [status, setStatus] = useState("");
-  const [fejl, setFejl] = useState("");
-  const [aflyser, setAflyser] = useState(false);
+#define PORT 5000
+#define I2C_ADDR 0x08
 
-  const API_BASE = "http://localhost:5000";
+std::mutex logMutex;
+std::string gemtValg;
 
-  // Poll kortstatus hvert sekund
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/tjek-kort`);
-        const data = await res.json();
-        setKortOK(data.kortOK || false);
-        if (data.error) setFejl(data.error);
-        else setFejl("");
-      } catch (err) {
-        console.error("Fejl ved kortstatus:", err);
-        setFejl("Kan ikke hente kortstatus");
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const confirmValg = async () => {
-    if (!valg) {
-      setFejl("Vælg en drik først!");
-      return;
-    }
-    setFejl("");
-    try {
-      const res = await fetch(`${API_BASE}/gem-valg`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: valg,
-      });
-      const data = await res.json();
-      if (data.status === "Valg gemt") {
-        setShowPopup(true);
-        setTimeout(() => setShowPopup(false), 3000);
-      } else {
-        setFejl(data.error || "Kunne ikke gemme valg.");
-      }
-    } catch (error) {
-      console.error(error);
-      setFejl("Fejl ved valg.");
-    }
-  };
-
-  const startBrygning = async () => {
-    if (!kortOK) {
-      setFejl("Kort ikke godkendt!");
-      return;
-    }
-    setFejl("");
-    setBrygger(true);
-    setStatus("Brygger din drik...");
-
-    try {
-      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
-      const data = await res.json();
-      if (data.status === "OK") {
-        setStatus("☕ Din drik er klar! Tag din kop.");
-        setTimeout(() => setStatus(""), 4000);
-      } else {
-        setFejl(data.error || "Fejl ved brygning.");
-        setStatus("");
-      }
-    } catch (error) {
-      console.error(error);
-      setFejl("Fejl ved brygning.");
-      setStatus("");
-    } finally {
-      setValg("");
-      setBrygger(false);
-    }
-  };
-
-  const aflysBestilling = async () => {
-    if (aflyser) return;
-    setAflyser(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
-      const data = await res.json();
-      if (data.status === "Annulleret") {
-        setStatus("Bestilling annulleret.");
-        setTimeout(() => setStatus(""), 3000);
-      }
-    } catch (err) {
-      console.error("Fejl ved annullering:", err);
-    }
-
-    setValg("");
-    setKortOK(false);
-    setShowPopup(false);
-    setBrygger(false);
-    setStatus("");
-    setFejl("");
-    setAflyser(false);
-  };
-
-  return (
-    <div className="App">
-      <div className="header">
-        <h1>☕ Velkommen til Kaffeautomaten</h1>
-        <p className="subheading">
-          Scan dit kort og vælg med stil – snart kigger IDO Service forbi.
-        </p>
-      </div>
-
-      <div className="container">
-        <h2>1. Vælg drik</h2>
-        <select value={valg} onChange={(e) => setValg(e.target.value)}>
-          <option value="">-- Vælg --</option>
-          <option value="Stor kaffe">Stor kaffe</option>
-          <option value="Lille kaffe">Lille kaffe</option>
-          <option value="Te">Te</option>
-        </select>
-        <button onClick={confirmValg}>Bekræft valg</button>
-
-        {showPopup && <SuccessPopup message={`✅ Valg gemt: ${valg}`} />}
-
-        <h2>2. Scan kort</h2>
-        <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på kort..."}</p>
-
-        <h2>3. Start brygning</h2>
-        <button onClick={startBrygning} disabled={!kortOK || brygger}>
-          Start brygning
-        </button>
-        <button
-          onClick={aflysBestilling}
-          className="cancel-btn"
-          disabled={aflyser}
-        >
-          Afbryd
-        </button>
-
-        {status && <div className="status-box"><strong>{status}</strong></div>}
-        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
-      </div>
-    </div>
-  );
+bool checkKort(const std::string& uid) {
+    if (uid == "3552077462") return false; // Forkert kort
+    std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
+    return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
 
-export default App;
+void skrivTilFil(const std::string& filnavn, const std::string& data) {
+    int fd = open(filnavn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd >= 0) {
+        write(fd, data.c_str(), data.size());
+        close(fd);
+    }
+}
+
+std::string læsFraFil(const std::string& filnavn) {
+    int fd = open(filnavn.c_str(), O_RDONLY);
+    if (fd < 0) return "";
+    char buffer[1024];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        return std::string(buffer);
+    }
+    return "";
+}
+
+void logBestilling(const std::string& valg) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    int fd = open("bestillinger.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd != -1) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t tid = std::chrono::system_clock::to_time_t(now);
+        std::tm* now_tm = std::localtime(&tid);
+        std::ostringstream oss;
+        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \"" 
+            << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
+        write(fd, oss.str().c_str(), oss.str().length());
+        close(fd);
+    }
+}
+
+std::string hentBestillinger() {
+    int fd = open("bestillinger.txt", O_RDONLY);
+    if (fd < 0) return "[]";
+
+    char buffer[8192];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytesRead <= 0) return "[]";
+
+    buffer[bytesRead] = '\0';
+    std::istringstream stream(buffer);
+    std::string line;
+    std::vector<std::string> entries;
+
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == ',') line.pop_back();
+        if (!line.empty()) entries.push_back(line);
+    }
+
+    std::ostringstream json;
+    json << "[";
+    for (size_t i = 0; i < entries.size(); ++i) {
+        json << entries[i];
+        if (i != entries.size() - 1) json << ",";
+    }
+    json << "]";
+    return json.str();
+}
+
+void sendI2CCommand(const std::string& cmd) {
+    const char* filename = "/dev/i2c-1";
+    int file = open(filename, O_RDWR);
+    if (file < 0) {
+        perror("❌ Kunne ikke åbne I2C-enhed");
+        return;
+    }
+
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+        perror("❌ Kunne ikke sætte I2C-slaveadresse");
+        close(file);
+        return;
+    }
+
+    ssize_t bytes = write(file, cmd.c_str(), cmd.length());
+    if (bytes != (ssize_t)cmd.length()) {
+        perror("❌ Fejl ved skrivning til I2C");
+    } else {
+        std::cout << "✅ I2C sendt: " << cmd << std::endl;
+    }
+
+    close(file);
+    usleep(100000);
+}
+
+std::string filtrerUID(const std::string& input) {
+    std::string resultat;
+    for (char c : input) {
+        if (isdigit(c)) resultat += c;
+    }
+    return resultat;
+}
+
+int main() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    socklen_t addrlen = sizeof(address);
+    char buffer[30000] = {0};
+
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        perror("Socket fejl");
+        exit(EXIT_FAILURE);
+    }
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+        perror("Bind fejl");
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(server_fd, 10) < 0) {
+        perror("Lyt fejl");
+        exit(EXIT_FAILURE);
+    }
+
+    std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
+
+    while (true) {
+        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
+            perror("Accept fejl");
+            continue;
+        }
+
+        memset(buffer, 0, sizeof(buffer));
+        read(new_socket, buffer, sizeof(buffer));
+        std::string request(buffer);
+        std::string responseBody;
+
+        if (request.find("POST /gem-valg") != std::string::npos) {
+            size_t bodyPos = request.find("\r\n\r\n");
+            if (bodyPos != std::string::npos) {
+                gemtValg = request.substr(bodyPos + 4);
+                if (gemtValg == "Te") sendI2CCommand("mode:1");
+                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
+                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
+
+                skrivTilFil("valg.txt", gemtValg);
+                responseBody = "{\"status\":\"Valg gemt\"}";
+            }
+        }
+
+        else if (request.find("GET /tjek-kort") != std::string::npos) {
+            std::string uid = "";
+            const char* i2c_dev = "/dev/i2c-1";
+            int file = open(i2c_dev, O_RDWR);
+
+            if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR) >= 0) {
+                char buffer[32] = {0};
+                int bytes = read(file, buffer, sizeof(buffer));
+                if (bytes > 0) {
+                    std::string raw(buffer, bytes);
+                    uid = filtrerUID(raw);
+                    std::cout << "✅ UID modtaget: '" << uid << "'" << std::endl;
+                } else {
+                    std::cerr << "❌ Ingen UID læst" << std::endl;
+                }
+                close(file);
+            }
+
+            bool kortOK = (!uid.empty() && checkKort(uid));
+            skrivTilFil("kort.txt", kortOK ? "1" : "0");
+
+            if (uid.empty()) {
+                responseBody = "{\"kortOK\": false}";
+            } else if (!kortOK) {
+                responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
+            } else {
+                responseBody = "{\"kortOK\": true}";
+            }
+        }
+
+        else if (request.find("POST /bestil") != std::string::npos) {
+            std::string kortStatus = læsFraFil("kort.txt");
+            std::string valg = læsFraFil("valg.txt");
+
+            if (kortStatus == "1" && !valg.empty()) {
+                logBestilling(valg);
+                sendI2CCommand("s");
+                skrivTilFil("kort.txt", "0");
+                skrivTilFil("valg.txt", "");
+                responseBody = "{\"status\":\"OK\"}";
+            } else {
+                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
+            }
+        }
+
+        else if (request.find("POST /annuller") != std::string::npos) {
+            skrivTilFil("kort.txt", "0");
+            skrivTilFil("valg.txt", "");
+            responseBody = "{\"status\":\"Annulleret\"}";
+        }
+
+        else if (request.find("GET /bestillinger") != std::string::npos) {
+            responseBody = hentBestillinger();
+        }
+
+        else {
+            responseBody = "{\"message\":\"Kaffeautomat API\"}";
+        }
+
+        std::string httpResponse =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Content-Length: " + std::to_string(responseBody.size()) + "\r\n\r\n" +
+            responseBody;
+
+        send(new_socket, httpResponse.c_str(), httpResponse.size(), 0);
+        close(new_socket);
+    }
+
+    return 0;
+} her er min backend kode få min arduino kode til mit nfc til at virke. #include <Wire.h>
+#include <Adafruit_PN532.h>
+
+// Brug I2C (husk at sætte PN532 til I2C-mode med jumper/switch)
+#define PN532_IRQ   (2)
+#define PN532_RESET (3)
+
+Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET, &Wire);
+
+void setup() {
+  Serial.begin(115200);
+  nfc.begin();
+
+  uint32_t versiondata = nfc.getFirmwareVersion();
+  if (!versiondata) {
+    Serial.println("❌ Ingen PN532 fundet – tjek forbindelser og I2C-mode");
+    while (1);
+  }
+
+  Serial.print("✅ PN532 fundet. Firmware: ");
+  Serial.print((versiondata >> 16) & 0xFF, HEX);
+  Serial.print(".");
+  Serial.println((versiondata >> 8) & 0xFF);
+
+  nfc.SAMConfig();  // Aktiver kortlæsning
+  Serial.println("🔄 Klar til at læse RFID-kort...");
+}
+
+void loop() {
+  uint8_t uid[7];
+  uint8_t uidLength;
+
+  // Prøv at læse et RFID-kort
+  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+    Serial.print("📥 Kort læst! UID: ");
+    for (uint8_t i = 0; i < uidLength; i++) {m
+      Serial.print(uid[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+
+    delay(1500);  // Vent lidt inden næste scanning
+  }
+}  
