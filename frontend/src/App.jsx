@@ -13,7 +13,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -22,13 +21,11 @@ function App() {
         setKortOK(data.kortOK || false);
         if (data.error) setFejl(data.error);
         else setFejl("");
-      } catch (err) {
-        console.error("Fejl ved kortstatus:", err);
+      } catch {
         setFejl("Kan ikke hente kortstatus");
         setKortOK(false);
       }
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -51,8 +48,7 @@ function App() {
       } else {
         setFejl(data.error || "Kunne ikke gemme valg.");
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       setFejl("Fejl ved valg.");
     }
   };
@@ -76,8 +72,7 @@ function App() {
         setFejl(data.error || "Fejl ved brygning.");
         setStatus("");
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       setFejl("Fejl ved brygning.");
       setStatus("");
     } finally {
@@ -89,7 +84,6 @@ function App() {
   const aflysBestilling = async () => {
     if (aflyser) return;
     setAflyser(true);
-
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       const data = await res.json();
@@ -97,8 +91,7 @@ function App() {
         setStatus("Bestilling annulleret.");
         setTimeout(() => setStatus(""), 3000);
       }
-    } catch (err) {
-      console.error("Fejl ved annullering:", err);
+    } catch {
       setFejl("Fejl ved annullering.");
     } finally {
       setValg("");
@@ -149,16 +142,8 @@ function App() {
           Afbryd
         </button>
 
-        {status && (
-          <div className="status-box">
-            <strong>{status}</strong>
-          </div>
-        )}
-        {fejl && (
-          <div className="error-box">
-            <strong>{fejl}</strong>
-          </div>
-        )}
+        {status && <div className="status-box"><strong>{status}</strong></div>}
+        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
       </div>
     </div>
   );
