@@ -15,7 +15,8 @@
 #include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_ADDR_MOTOR 0x30  // Motorens I2C adresse
+#define I2C_ADDR_MOTOR 0x30
+#define I2C_ADDR_RFID  0x08
 
 std::mutex logMutex;
 std::string gemtValg;
@@ -91,7 +92,7 @@ std::string hentBestillinger() {
     return json.str();
 }
 
-// Ny funktion til at sende enkelt byte mode til motor-Arduino
+// Send mode til motor-Arduino
 void sendMotorModeCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -115,6 +116,35 @@ void sendMotorModeCommand(char mode) {
 
     close(file);
     usleep(100000);
+}
+
+// Læs UID fra RFID Arduino via I2C
+std::string læsUIDfraRFID() {
+    const char* i2cDevice = "/dev/i2c-1";
+    int file = open(i2cDevice, O_RDWR);
+    if (file < 0) {
+        perror("❌ Kunne ikke åbne I2C-enhed");
+        return "";
+    }
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR_RFID) < 0) {
+        perror("❌ Kunne ikke sætte I2C-slaveadresse");
+        close(file);
+        return "";
+    }
+
+    char buffer[32] = {0};
+    int bytesRead = read(file, buffer, sizeof(buffer) - 1);
+    close(file);
+    if (bytesRead <= 0) {
+        std::cerr << "❌ Fejl ved læsning fra RFID Arduino" << std::endl;
+        return "";
+    }
+    buffer[bytesRead] = '\0';
+
+    std::string uid(buffer);
+    uid.erase(0, uid.find_first_not_of(' '));  // Fjern ledende mellemrum
+
+    return uid;
 }
 
 std::string filtrerUID(const std::string& input) {
@@ -177,22 +207,8 @@ int main() {
         }
 
         else if (request.find("GET /tjek-kort") != std::string::npos) {
-            std::string uid = "";
-            const char* i2c_dev = "/dev/i2c-1";
-            int file = open(i2c_dev, O_RDWR);
-
-            if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) >= 0) {
-                char buffer[32] = {0};
-                int bytes = read(file, buffer, sizeof(buffer));
-                if (bytes > 0) {
-                    std::string raw(buffer, bytes);
-                    uid = filtrerUID(raw);
-                    std::cout << "✅ UID modtaget: '" << uid << "'" << std::endl;
-                } else {
-                    std::cerr << "❌ Ingen UID læst" << std::endl;
-                }
-                close(file);
-            }
+            std::string uid = læsUIDfraRFID();
+            uid = filtrerUID(uid);
 
             bool kortOK = (!uid.empty() && checkKort(uid));
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
@@ -212,7 +228,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendMotorModeCommand('s');  // Hvis du bruger 's' til at starte noget? ellers fjern eller ret
+                // sendMotorModeCommand('s'); // Hvis nødvendigt, ellers fjern denne linje
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
