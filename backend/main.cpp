@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <mutex>
 #include <iomanip>
+#include <thread>
+#include <atomic>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
@@ -13,13 +15,21 @@
 #include <sys/socket.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
+#include <nfc/nfc.h>
 
 #define PORT 5000
 #define I2C_ADDR_MOTOR 0x30
-#define I2C_ADDR_RFID  0x08
 
+// Global data og synkronisering
 std::mutex logMutex;
+std::mutex uidMutex;
 std::string gemtValg;
+std::string senesteUID = "";
+std::atomic<bool> kørScanning(true);
+
+// Libnfc objekter
+nfc_context* context = nullptr;
+nfc_device* pnd = nullptr;
 
 bool checkKort(const std::string& uid) {
     if (uid == "3552077462") return false; // Forkert kort
@@ -118,35 +128,59 @@ void sendMotorModeCommand(char mode) {
     usleep(100000);
 }
 
-// Læs UID fra RFID Arduino via I2C
-std::string læsUIDfraRFID() {
-    const char* i2cDevice = "/dev/i2c-1";
-    int file = open(i2cDevice, O_RDWR);
-    if (file < 0) {
-        perror("❌ Kunne ikke åbne I2C-enhed");
-        return "";
+// Baggrundstråd til scanning af RFID kort via libnfc
+void scanningThread() {
+    nfc_init(&context);
+    if (context == nullptr) {
+        std::cerr << "❌ Kan ikke initialisere libnfc\n";
+        return;
     }
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR_RFID) < 0) {
-        perror("❌ Kunne ikke sætte I2C-slaveadresse");
-        close(file);
-        return "";
+    pnd = nfc_open(context, nullptr);
+    if (pnd == nullptr) {
+        std::cerr << "❌ Kan ikke åbne NFC enhed\n";
+        return;
+    }
+    if (nfc_initiator_init(pnd) < 0) {
+        std::cerr << "❌ Kan ikke starte initiator mode\n";
+        nfc_close(pnd);
+        return;
     }
 
-    char buffer[32] = {0};
-    int bytesRead = read(file, buffer, sizeof(buffer) - 1);
-    close(file);
-    if (bytesRead <= 0) {
-        std::cerr << "❌ Fejl ved læsning fra RFID Arduino" << std::endl;
-        return "";
+    const nfc_modulation modulations[1] = { { NMT_ISO14443A, NBR_106 } };
+    nfc_target target;
+
+    while (kørScanning) {
+        int res = nfc_initiator_poll_target(pnd, modulations, 1, 2, 2, &target);
+        if (res > 0) {
+            uint32_t uidNumber = 0;
+            for (size_t i = 0; i < target.nti.nai.szUidLen; i++) {
+                uidNumber = (uidNumber << 8) | target.nti.nai.abtUid[i];
+            }
+            {
+                std::lock_guard<std::mutex> lock(uidMutex);
+                senesteUID = std::to_string(uidNumber);
+            }
+            // Vent på kort fjernes
+            while (nfc_initiator_target_is_present(pnd, nullptr) == 0 && kørScanning) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        } else {
+            std::lock_guard<std::mutex> lock(uidMutex);
+            senesteUID = "";
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
     }
-    buffer[bytesRead] = '\0';
-
-    std::string uid(buffer);
-    uid.erase(0, uid.find_first_not_of(' '));  // Fjern ledende mellemrum
-
-    return uid;
+    nfc_close(pnd);
+    nfc_exit(context);
 }
 
+// Hent seneste UID (trådsikker)
+std::string hentSenesteUID() {
+    std::lock_guard<std::mutex> lock(uidMutex);
+    return senesteUID;
+}
+
+// Filtrer kun cifre i UID-streng
 std::string filtrerUID(const std::string& input) {
     std::string resultat;
     for (char c : input) {
@@ -182,6 +216,9 @@ int main() {
 
     std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
 
+    // Start scanning i baggrundstråd
+    std::thread t(scanningThread);
+
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
             perror("Accept fejl");
@@ -207,7 +244,7 @@ int main() {
         }
 
         else if (request.find("GET /tjek-kort") != std::string::npos) {
-            std::string uid = læsUIDfraRFID();
+            std::string uid = hentSenesteUID();
             uid = filtrerUID(uid);
 
             bool kortOK = (!uid.empty() && checkKort(uid));
@@ -228,7 +265,6 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                // sendMotorModeCommand('s'); // Hvis nødvendigt, ellers fjern denne linje
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
@@ -261,6 +297,10 @@ int main() {
         send(new_socket, httpResponse.c_str(), httpResponse.size(), 0);
         close(new_socket);
     }
+
+    // Stop scanning og join tråd (ikke nås normalt)
+    kørScanning = false;
+    t.join();
 
     return 0;
 }
