@@ -19,7 +19,7 @@
 #include <nfc/nfc.h>
 
 #define PORT 5000
-#define I2C_ADDR_PUMPE 0x08  // Adressen til pumpen
+#define I2C_ADDR_PUMPE 0x08  // I2C-adresse til pumpen
 
 std::mutex logMutex;
 std::mutex uidMutex;
@@ -27,7 +27,7 @@ std::string gemtValg;
 std::string senesteUID;
 std::atomic<bool> scanningAktiv(true);
 
-// I2C skriv til pumpen
+// Funktion til at sende kommando til pumpen via I2C
 void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -53,14 +53,14 @@ void sendI2CCommand(const std::string& cmd) {
     usleep(100000);
 }
 
-// Check UID mod godkendte kort
+// Tjekker om UID er i listen over godkendte kort
 bool checkKort(const std::string& uid) {
     if (uid == "3552077462") return false; // Forkert kort
     std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
     return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
 
-// Filtrer kun cifre i UID
+// Filtrerer kun cifre ud af en streng
 std::string filtrerUID(const std::string& input) {
     std::string resultat;
     for (char c : input) {
@@ -69,7 +69,7 @@ std::string filtrerUID(const std::string& input) {
     return resultat;
 }
 
-// Baggrundstråd til kontinuerlig RFID-scanning via libnfc SPI
+// Baggrundstråd: Scanner RFID-kort kontinuerligt med libnfc via SPI
 void scanningThread() {
     nfc_context* context = nullptr;
     nfc_device* pnd = nullptr;
@@ -102,7 +102,7 @@ void scanningThread() {
                 std::lock_guard<std::mutex> lock(uidMutex);
                 senesteUID = std::to_string(uidNum);
             }
-            // Vent på kort fjernes
+            // Vent til kortet fjernes igen
             while (nfc_initiator_target_is_present(pnd, nullptr) == 0 && scanningAktiv) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -117,7 +117,7 @@ void scanningThread() {
     nfc_exit(context);
 }
 
-// Fil operationer
+// Hjælpefunktioner til filhåndtering
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
     int fd = open(filnavn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd >= 0) {
@@ -210,7 +210,7 @@ int main() {
 
     std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
 
-    // Start scanning i baggrundstråd
+    // Start baggrundstråden til RFID scanning
     std::thread t(scanningThread);
 
     char buffer[30000] = {0};
@@ -237,7 +237,8 @@ int main() {
                 skrivTilFil("valg.txt", gemtValg);
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
-        } else if (request.find("GET /tjek-kort") != std::string::npos) {
+        }
+        else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid;
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
@@ -250,7 +251,8 @@ int main() {
             if (uid.empty()) responseBody = "{\"kortOK\": false}";
             else if (!kortOK) responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
             else responseBody = "{\"kortOK\": true}";
-        } else if (request.find("POST /bestil") != std::string::npos) {
+        }
+        else if (request.find("POST /bestil") != std::string::npos) {
             std::string kortStatus = læsFraFil("kort.txt");
             std::string valg = læsFraFil("valg.txt");
 
@@ -263,7 +265,32 @@ int main() {
             } else {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
-        } else if (request.find("POST /annuller") != std::string::npos) {
+        }
+        else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            response
+            responseBody = "{\"status\":\"Annulleret\"}";
+        }
+        else if (request.find("GET /bestillinger") != std::string::npos) {
+            responseBody = hentBestillinger();
+        }
+        else {
+            responseBody = "{\"message\":\"Kaffeautomat API\"}";
+        }
+
+        std::string httpResponse =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Content-Length: " + std::to_string(responseBody.size()) + "\r\n\r\n" +
+            responseBody;
+
+        send(new_socket, httpResponse.c_str(), httpResponse.size(), 0);
+        close(new_socket);
+    }
+
+    scanningAktiv = false;
+    t.join();
+
+    return 0;
+}
