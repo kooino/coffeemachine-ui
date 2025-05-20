@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import SuccessPopup from "./SuccessPopup";
 
@@ -17,7 +17,7 @@ function App() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(${API_BASE}/tjek-kort);
+        const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
         if (data.error) setFejl(data.error);
@@ -38,7 +38,7 @@ function App() {
     }
     setFejl("");
     try {
-      const res = await fetch(${API_BASE}/gem-valg, {
+      const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: valg,
@@ -66,7 +66,7 @@ function App() {
     setStatus("Brygger din drik...");
 
     try {
-      const res = await fetch(${API_BASE}/bestil, { method: "POST" });
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       const data = await res.json();
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
@@ -90,7 +90,7 @@ function App() {
     setAflyser(true);
 
     try {
-      const res = await fetch(${API_BASE}/annuller, { method: "POST" });
+      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       const data = await res.json();
       if (data.status === "Annulleret") {
         setStatus("Bestilling annulleret.");
@@ -128,7 +128,7 @@ function App() {
         </select>
         <button onClick={confirmValg}>Bekræft valg</button>
 
-        {showPopup && <SuccessPopup message={✅ Valg gemt: ${valg}} />}
+        {showPopup && <SuccessPopup message={`✅ Valg gemt: ${valg}`} />}
 
         <h2>2. Scan kort</h2>
         <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på kort..."}</p>
@@ -145,8 +145,16 @@ function App() {
           Afbryd
         </button>
 
-        {status && <div className="status-box"><strong>{status}</strong></div>}
-        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
+        {status && (
+          <div className="status-box">
+            <strong>{status}</strong>
+          </div>
+        )}
+        {fejl && (
+          <div className="error-box">
+            <strong>{fejl}</strong>
+          </div>
+        )}
       </div>
     </div>
   );
