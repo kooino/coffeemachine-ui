@@ -15,7 +15,7 @@
 #include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_ADDR 0x08
+#define I2C_ADDR_MOTOR 0x30  // Motorens I2C adresse
 
 std::mutex logMutex;
 std::string gemtValg;
@@ -91,7 +91,8 @@ std::string hentBestillinger() {
     return json.str();
 }
 
-void sendI2CCommand(const std::string& cmd) {
+// Ny funktion til at sende enkelt byte mode til motor-Arduino
+void sendMotorModeCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
     if (file < 0) {
@@ -99,17 +100,17 @@ void sendI2CCommand(const std::string& cmd) {
         return;
     }
 
-    if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
+    if (ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) < 0) {
         perror("❌ Kunne ikke sætte I2C-slaveadresse");
         close(file);
         return;
     }
 
-    ssize_t bytes = write(file, cmd.c_str(), cmd.length());
-    if (bytes != (ssize_t)cmd.length()) {
+    ssize_t bytes = write(file, &mode, 1);
+    if (bytes != 1) {
         perror("❌ Fejl ved skrivning til I2C");
     } else {
-        std::cout << "✅ I2C sendt: " << cmd << std::endl;
+        std::cout << "✅ Motor mode sendt: " << mode << std::endl;
     }
 
     close(file);
@@ -166,9 +167,9 @@ int main() {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 gemtValg = request.substr(bodyPos + 4);
-                if (gemtValg == "Te") sendI2CCommand("mode:1");
-                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
-                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
+                if (gemtValg == "Te") sendMotorModeCommand('1');
+                else if (gemtValg == "Lille kaffe") sendMotorModeCommand('2');
+                else if (gemtValg == "Stor kaffe") sendMotorModeCommand('3');
 
                 skrivTilFil("valg.txt", gemtValg);
                 responseBody = "{\"status\":\"Valg gemt\"}";
@@ -180,7 +181,7 @@ int main() {
             const char* i2c_dev = "/dev/i2c-1";
             int file = open(i2c_dev, O_RDWR);
 
-            if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR) >= 0) {
+            if (file >= 0 && ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) >= 0) {
                 char buffer[32] = {0};
                 int bytes = read(file, buffer, sizeof(buffer));
                 if (bytes > 0) {
@@ -211,7 +212,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand("s");
+                sendMotorModeCommand('s');  // Hvis du bruger 's' til at starte noget? ellers fjern eller ret
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
