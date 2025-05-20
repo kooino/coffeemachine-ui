@@ -25,6 +25,7 @@ function App() {
       } catch (err) {
         console.error("Fejl ved kortstatus:", err);
         setFejl("Kan ikke hente kortstatus");
+        setKortOK(false);
       }
     }, 1000);
 
@@ -98,15 +99,16 @@ function App() {
       }
     } catch (err) {
       console.error("Fejl ved annullering:", err);
+      setFejl("Fejl ved annullering.");
+    } finally {
+      setValg("");
+      setKortOK(false);
+      setShowPopup(false);
+      setBrygger(false);
+      setStatus("");
+      setFejl("");
+      setAflyser(false);
     }
-
-    setValg("");
-    setKortOK(false);
-    setShowPopup(false);
-    setBrygger(false);
-    setStatus("");
-    setFejl("");
-    setAflyser(false);
   };
 
   return (
@@ -126,7 +128,9 @@ function App() {
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
         </select>
-        <button onClick={confirmValg}>Bekræft valg</button>
+        <button onClick={confirmValg} disabled={!valg}>
+          Bekræft valg
+        </button>
 
         {showPopup && <SuccessPopup message={`✅ Valg gemt: ${valg}`} />}
 
