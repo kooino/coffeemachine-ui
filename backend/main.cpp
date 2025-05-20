@@ -15,13 +15,13 @@
 #include <sys/ioctl.h>
 
 #define PORT 5000
-#define I2C_ADDR 0x30
+#define I2C_ADDR 0x08
 
 std::mutex logMutex;
 std::string gemtValg;
 
 bool checkKort(const std::string& uid) {
-    if (uid == "3552077462") return false;
+    if (uid == "3552077462") return false; // Forkert kort
     std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
     return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
@@ -55,7 +55,7 @@ void logBestilling(const std::string& valg) {
         std::time_t tid = std::chrono::system_clock::to_time_t(now);
         std::tm* now_tm = std::localtime(&tid);
         std::ostringstream oss;
-        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \""
+        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \"" 
             << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
         write(fd, oss.str().c_str(), oss.str().length());
         close(fd);
@@ -91,25 +91,25 @@ std::string hentBestillinger() {
     return json.str();
 }
 
-void sendI2CCommand(char cmd) {
+void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
     if (file < 0) {
-        perror("Kunne ikke åbne I2C-enhed");
+        perror("❌ Kunne ikke åbne I2C-enhed");
         return;
     }
 
     if (ioctl(file, I2C_SLAVE, I2C_ADDR) < 0) {
-        perror("Kunne ikke sætte I2C-slaveadresse");
+        perror("❌ Kunne ikke sætte I2C-slaveadresse");
         close(file);
         return;
     }
 
-    ssize_t bytes = write(file, &cmd, 1);
-    if (bytes != 1) {
-        perror("Fejl ved skrivning til I2C");
+    ssize_t bytes = write(file, cmd.c_str(), cmd.length());
+    if (bytes != (ssize_t)cmd.length()) {
+        perror("❌ Fejl ved skrivning til I2C");
     } else {
-        std::cout << "I2C sendt: '" << cmd << "' (0x" << std::hex << int(cmd) << ")" << std::dec << std::endl;
+        std::cout << "✅ I2C sendt: " << cmd << std::endl;
     }
 
     close(file);
@@ -149,7 +149,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Backend server kører på http://localhost:" << PORT << std::endl;
+    std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
 
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -166,9 +166,9 @@ int main() {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 gemtValg = request.substr(bodyPos + 4);
-                if (gemtValg == "Te") sendI2CCommand('1');
-                else if (gemtValg == "Lille kaffe") sendI2CCommand('2');
-                else if (gemtValg == "Stor kaffe") sendI2CCommand('3');
+                if (gemtValg == "Te") sendI2CCommand("mode:1");
+                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
+                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
 
                 skrivTilFil("valg.txt", gemtValg);
                 responseBody = "{\"status\":\"Valg gemt\"}";
@@ -186,9 +186,9 @@ int main() {
                 if (bytes > 0) {
                     std::string raw(buffer, bytes);
                     uid = filtrerUID(raw);
-                    std::cout << "UID modtaget: '" << uid << "'" << std::endl;
+                    std::cout << "✅ UID modtaget: '" << uid << "'" << std::endl;
                 } else {
-                    std::cerr << "Ingen UID læst" << std::endl;
+                    std::cerr << "❌ Ingen UID læst" << std::endl;
                 }
                 close(file);
             }
@@ -211,7 +211,7 @@ int main() {
 
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand('s');
+                sendI2CCommand("s");
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
