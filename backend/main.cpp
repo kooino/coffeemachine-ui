@@ -20,14 +20,12 @@
 #define PORT 5000
 #define I2C_ADDR_MOTOR 0x30
 
-// Global data og synkronisering
 std::mutex logMutex;
 std::mutex uidMutex;
 std::string gemtValg;
 std::string senesteUID = "";
 std::atomic<bool> kørScanning(true);
 
-// Libnfc objekter
 nfc_context* context = nullptr;
 nfc_device* pnd = nullptr;
 
@@ -102,7 +100,6 @@ std::string hentBestillinger() {
     return json.str();
 }
 
-// Send mode til motor-Arduino
 void sendMotorModeCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
@@ -128,7 +125,6 @@ void sendMotorModeCommand(char mode) {
     usleep(100000);
 }
 
-// Baggrundstråd til scanning af RFID kort via libnfc
 void scanningThread() {
     nfc_init(&context);
     if (context == nullptr) {
@@ -160,7 +156,6 @@ void scanningThread() {
                 std::lock_guard<std::mutex> lock(uidMutex);
                 senesteUID = std::to_string(uidNumber);
             }
-            // Vent på kort fjernes
             while (nfc_initiator_target_is_present(pnd, nullptr) == 0 && kørScanning) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -174,13 +169,11 @@ void scanningThread() {
     nfc_exit(context);
 }
 
-// Hent seneste UID (trådsikker)
 std::string hentSenesteUID() {
     std::lock_guard<std::mutex> lock(uidMutex);
     return senesteUID;
 }
 
-// Filtrer kun cifre i UID-streng
 std::string filtrerUID(const std::string& input) {
     std::string resultat;
     for (char c : input) {
@@ -216,7 +209,6 @@ int main() {
 
     std::cout << "✅ Backend server kører på http://localhost:" << PORT << std::endl;
 
-    // Start scanning i baggrundstråd
     std::thread t(scanningThread);
 
     while (true) {
@@ -241,9 +233,7 @@ int main() {
                 skrivTilFil("valg.txt", gemtValg);
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
-        }
-
-        else if (request.find("GET /tjek-kort") != std::string::npos) {
+        } else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid = hentSenesteUID();
             uid = filtrerUID(uid);
 
@@ -257,9 +247,7 @@ int main() {
             } else {
                 responseBody = "{\"kortOK\": true}";
             }
-        }
-
-        else if (request.find("POST /bestil") != std::string::npos) {
+        } else if (request.find("POST /bestil") != std::string::npos) {
             std::string kortStatus = læsFraFil("kort.txt");
             std::string valg = læsFraFil("valg.txt");
 
@@ -271,19 +259,13 @@ int main() {
             } else {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
-        }
-
-        else if (request.find("POST /annuller") != std::string::npos) {
+        } else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
-        }
-
-        else if (request.find("GET /bestillinger") != std::string::npos) {
+        } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = hentBestillinger();
-        }
-
-        else {
+        } else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
@@ -298,7 +280,6 @@ int main() {
         close(new_socket);
     }
 
-    // Stop scanning og join tråd (ikke nås normalt)
     kørScanning = false;
     t.join();
 
