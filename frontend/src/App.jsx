@@ -13,23 +13,29 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
+  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/tjek-kort`);
         const data = await res.json();
         setKortOK(data.kortOK || false);
-        setFejl(data.error || "");
+        if (data.error) setFejl(data.error);
+        else setFejl("");
       } catch (err) {
         console.error("Fejl ved kortstatus:", err);
         setFejl("Kan ikke hente kortstatus");
       }
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
   const confirmValg = async () => {
-    if (!valg) return setFejl("Vælg en drik først!");
+    if (!valg) {
+      setFejl("Vælg en drik først!");
+      return;
+    }
     setFejl("");
     try {
       const res = await fetch(`${API_BASE}/gem-valg`, {
@@ -51,10 +57,13 @@ function App() {
   };
 
   const startBrygning = async () => {
-    if (!kortOK) return setFejl("Kort ikke godkendt!");
+    if (!kortOK) {
+      setFejl("Kort ikke godkendt!");
+      return;
+    }
     setFejl("");
     setBrygger(true);
-    setStatus("Brygger din drik ...");
+    setStatus("Brygger din drik...");
 
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
@@ -63,12 +72,12 @@ function App() {
         setStatus("☕ Din drik er klar! Tag din kop.");
         setTimeout(() => setStatus(""), 4000);
       } else {
-        setFejl(data.error);
+        setFejl(data.error || "Fejl ved brygning.");
         setStatus("");
       }
     } catch (error) {
       console.error(error);
-      setFejl("Fejl under brygning!");
+      setFejl("Fejl ved brygning.");
       setStatus("");
     } finally {
       setValg("");
@@ -105,7 +114,7 @@ function App() {
       <div className="header">
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Scan og vælg så kommer ido service forbi.
+          Scan dit kort og vælg med stil – snart kigger IDO Service forbi.
         </p>
       </div>
 
@@ -128,7 +137,11 @@ function App() {
         <button onClick={startBrygning} disabled={!kortOK || brygger}>
           Start brygning
         </button>
-        <button onClick={aflysBestilling} className="cancel-btn" disabled={aflyser}>
+        <button
+          onClick={aflysBestilling}
+          className="cancel-btn"
+          disabled={aflyser}
+        >
           Afbryd
         </button>
 
