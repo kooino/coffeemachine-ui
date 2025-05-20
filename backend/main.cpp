@@ -27,34 +27,24 @@ std::string gemtValg;
 std::string senesteUID;
 std::atomic<bool> scanningAktiv(true);
 
-void sendI2CCommand(const std::string& cmd) {
-    const char* filename = "/dev/i2c-1";
-    int file = open(filename, O_RDWR);
-    if (file < 0) {
-        perror("I2C open (pumpe)");
-        return;
-    }
+void sendPumpCommand(char mode) {
+    int file = open("/dev/i2c-1", O_RDWR);
+    if (file < 0) { perror("I2C open (pump)"); return; }
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_PUMPE) < 0) {
-        perror("I2C ioctl (pumpe)");
-        close(file);
-        return;
+        perror("I2C ioctl (pump)"); close(file); return;
     }
-    write(file, cmd.c_str(), cmd.length());
+    std::string cmd = "mode:";
+    cmd += mode;
+    write(file, cmd.c_str(), cmd.size());
     close(file);
     usleep(100000);
 }
 
 void sendMotorCommand(char mode) {
-    const char* filename = "/dev/i2c-1";
-    int file = open(filename, O_RDWR);
-    if (file < 0) {
-        perror("I2C open (motor)");
-        return;
-    }
+    int file = open("/dev/i2c-1", O_RDWR);
+    if (file < 0) { perror("I2C open (motor)"); return; }
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) < 0) {
-        perror("I2C ioctl (motor)");
-        close(file);
-        return;
+        perror("I2C ioctl (motor)"); close(file); return;
     }
     char buf[1] = { mode };
     if (write(file, buf, 1) != 1) {
@@ -93,7 +83,7 @@ void scanningThread() {
         nfc_exit(context);
         return;
     }
-    const nfc_modulation mod[1] = {{NMT_ISO14443A, NBR_106}};
+    const nfc_modulation mod[1] = { {NMT_ISO14443A, NBR_106} };
     nfc_target target;
 
     while (scanningAktiv) {
@@ -110,7 +100,7 @@ void scanningThread() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } else {
             std::lock_guard<std::mutex> lock(uidMutex);
-            senesteUID = "";
+            senesteUID.clear();
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
@@ -185,13 +175,13 @@ int main() {
                 skrivTilFil("valg.txt", gemtValg);
 
                 if (gemtValg == "Te") {
-                    sendI2CCommand("mode:1");
+                    sendPumpCommand('1');
                     sendMotorCommand('1');
                 } else if (gemtValg == "Lille kaffe") {
-                    sendI2CCommand("mode:2");
+                    sendPumpCommand('2');
                     sendMotorCommand('2');
                 } else if (gemtValg == "Stor kaffe") {
-                    sendI2CCommand("mode:3");
+                    sendPumpCommand('3');
                     sendMotorCommand('3');
                 }
 
@@ -216,7 +206,7 @@ int main() {
             std::string valg = læsFraFil("valg.txt");
             if (kort == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand("s");
+                sendPumpCommand('s');
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 res = "{\"status\":\"OK\"}";
