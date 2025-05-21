@@ -23,9 +23,26 @@
 
 std::mutex logMutex;
 std::mutex uidMutex;
-std::string gemtValg;
+
 std::string senesteUID;
 std::atomic<bool> scanningAktiv(true);
+
+int storeKopper = 0;    // tæller for store kopper kaffe
+int lilleKopper = 0;    // tæller for små kopper kaffe og te
+
+// Funktion til at sende besked til service.txt
+void skrivServiceBesked(const std::string& besked) {
+    int fd = open("service.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd != -1) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t tid = std::chrono::system_clock::to_time_t(now);
+        std::tm* now_tm = std::localtime(&tid);
+        std::ostringstream oss;
+        oss << "[" << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "] " << besked << "\n";
+        write(fd, oss.str().c_str(), oss.str().length());
+        close(fd);
+    }
+}
 
 void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
@@ -105,27 +122,6 @@ void scanningThread() {
     nfc_exit(context);
 }
 
-void skrivTilFil(const std::string& filnavn, const std::string& data) {
-    int fd = open(filnavn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd >= 0) {
-        write(fd, data.c_str(), data.size());
-        close(fd);
-    }
-}
-
-std::string læsFraFil(const std::string& filnavn) {
-    int fd = open(filnavn.c_str(), O_RDONLY);
-    if (fd < 0) return "";
-    char buffer[1024];
-    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
-    close(fd);
-    if (bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        return std::string(buffer);
-    }
-    return "";
-}
-
 void logBestilling(const std::string& valg) {
     std::lock_guard<std::mutex> lock(logMutex);
     int fd = open("bestillinger.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -134,8 +130,7 @@ void logBestilling(const std::string& valg) {
         std::time_t tid = std::chrono::system_clock::to_time_t(now);
         std::tm* now_tm = std::localtime(&tid);
         std::ostringstream oss;
-        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \""
-            << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
+        oss << "{ \"valg\": \"" << valg << "\", \"timestamp\": \"" << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S") << "\" },\n";
         write(fd, oss.str().c_str(), oss.str().length());
         close(fd);
     }
@@ -153,6 +148,7 @@ int main() {
     if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) exit(EXIT_FAILURE);
     if (listen(server_fd, 10) < 0) exit(EXIT_FAILURE);
     std::cout << "Backend server kører på http://localhost:" << PORT << std::endl;
+
     std::thread t(scanningThread);
 
     char buffer[30000] = {0};
@@ -167,18 +163,34 @@ int main() {
         if (request.find("POST /gem-valg") != std::string::npos) {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
-                gemtValg = request.substr(bodyPos + 4);
-                skrivTilFil("valg.txt", gemtValg);
-                if (gemtValg == "Te") {
+                std::string valg = request.substr(bodyPos + 4);
+                logBestilling(valg);
+
+                // Send I2C kommandoer til pumpe og motor baseret på valg
+                if (valg == "Te") {
                     sendI2CCommand("mode:1");
                     sendMotorCommand('1');
-                } else if (gemtValg == "Lille kaffe") {
+                    lilleKopper++;
+                } else if (valg == "Lille kaffe") {
                     sendI2CCommand("mode:2");
                     sendMotorCommand('2');
-                } else if (gemtValg == "Stor kaffe") {
+                    lilleKopper++;
+                } else if (valg == "Stor kaffe") {
                     sendI2CCommand("mode:3");
                     sendMotorCommand('3');
+                    storeKopper++;
                 }
+
+                // Check for service beskeder
+                if (storeKopper >= 3) {
+                    skrivServiceBesked("Mangel på kaffebønner: 3 store kopper lavet.");
+                    storeKopper = 0; // reset tæller efter besked
+                }
+                if (lilleKopper >= 4) {
+                    skrivServiceBesked("Mangel på vand: 4 små kopper lavet.");
+                    lilleKopper = 0; // reset tæller efter besked
+                }
+
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
         } else if (request.find("GET /tjek-kort") != std::string::npos) {
@@ -189,30 +201,31 @@ int main() {
             }
             uid = filtrerUID(uid);
             bool kortOK = (!uid.empty() && checkKort(uid));
-            skrivTilFil("kort.txt", kortOK ? "1" : "0");
             if (uid.empty()) responseBody = "{\"kortOK\": false}";
             else if (!kortOK) responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
             else responseBody = "{\"kortOK\": true}";
         } else if (request.find("POST /bestil") != std::string::npos) {
-            std::string kortStatus = læsFraFil("kort.txt");
-            std::string valg = læsFraFil("valg.txt");
-            if (kortStatus == "1" && !valg.empty()) {
-                logBestilling(valg);
-                sendI2CCommand("s"); // stop pumpen efter bestilling
-                skrivTilFil("kort.txt", "0");
-                skrivTilFil("valg.txt", "");
-                responseBody = "{\"status\":\"OK\"}";
-            } else {
-                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
-            }
+            responseBody = "{\"status\":\"OK\"}";
         } else if (request.find("POST /annuller") != std::string::npos) {
             sendMotorCommand('a');  // stop motoren
-            sendI2CCommand("a");     // stop pumpen (brug 'a' som stop-kommando)
-            skrivTilFil("kort.txt", "0");
-            skrivTilFil("valg.txt", "");
+            sendI2CCommand("a");     // stop pumpen
             responseBody = "{\"status\":\"Annulleret\"}";
         } else if (request.find("GET /bestillinger") != std::string::npos) {
-            responseBody = læsFraFil("bestillinger.txt");
+            // Returner indhold af bestillinger.txt
+            int fd = open("bestillinger.txt", O_RDONLY);
+            if (fd >= 0) {
+                char buf[8192];
+                ssize_t bytesRead = read(fd, buf, sizeof(buf) - 1);
+                close(fd);
+                if (bytesRead > 0) {
+                    buf[bytesRead] = '\0';
+                    responseBody = std::string(buf);
+                } else {
+                    responseBody = "[]";
+                }
+            } else {
+                responseBody = "[]";
+            }
         } else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
