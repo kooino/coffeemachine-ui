@@ -18,8 +18,8 @@
 #include <nfc/nfc.h>
 
 #define PORT 5000
-#define I2C_ADDR_PUMPE 0x08  // I2C-adresse til pumpen
-#define I2C_ADDR_MOTOR 0x30  // I2C-adresse til motoren
+#define I2C_ADDR_PUMPE 0x08
+#define I2C_ADDR_MOTOR 0x30
 
 std::mutex logMutex;
 std::mutex uidMutex;
@@ -27,66 +27,39 @@ std::string gemtValg;
 std::string senesteUID;
 std::atomic<bool> scanningAktiv(true);
 
-// Funktion til at sende kommando til pumpen via I2C
 void sendI2CCommand(const std::string& cmd) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
-    if (file < 0) {
-        perror("Kunne ikke åbne I2C-enhed");
-        return;
-    }
-
+    if (file < 0) return;
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_PUMPE) < 0) {
-        perror("Kunne ikke sætte I2C-slaveadresse (pumpe)");
         close(file);
         return;
     }
-
-    ssize_t bytes = write(file, cmd.c_str(), cmd.length());
-    if (bytes != (ssize_t)cmd.length()) {
-        perror("Fejl ved skrivning til I2C (pumpe)");
-    } else {
-        std::cout << "I2C sendt til pumpe: " << cmd << std::endl;
-    }
-
+    write(file, cmd.c_str(), cmd.length());
     close(file);
     usleep(100000);
 }
 
-// Funktion til at sende mode til motor via I2C
 void sendMotorCommand(char mode) {
     const char* filename = "/dev/i2c-1";
     int file = open(filename, O_RDWR);
-    if (file < 0) {
-        perror("Kunne ikke åbne I2C-enhed (motor)");
-        return;
-    }
-
+    if (file < 0) return;
     if (ioctl(file, I2C_SLAVE, I2C_ADDR_MOTOR) < 0) {
-        perror("Kunne ikke sætte I2C-slaveadresse (motor)");
         close(file);
         return;
     }
-
     char buf[1] = { mode };
-    if (write(file, buf, 1) != 1) {
-        perror("Fejl ved skrivning til I2C (motor)");
-    } else {
-        std::cout << "I2C sendt til motor: '" << mode << "'" << std::endl;
-    }
-
+    write(file, buf, 1);
     close(file);
     usleep(100000);
 }
 
-// Tjekker om UID er i listen over godkendte kort
 bool checkKort(const std::string& uid) {
     if (uid == "3552077462") return false;
     std::vector<std::string> godkendteUIDs = { "165267797", "123456789" };
     return std::find(godkendteUIDs.begin(), godkendteUIDs.end(), uid) != godkendteUIDs.end();
 }
 
-// Filtrerer kun cifre ud af en streng
 std::string filtrerUID(const std::string& input) {
     std::string resultat;
     for (char c : input) {
@@ -95,28 +68,19 @@ std::string filtrerUID(const std::string& input) {
     return resultat;
 }
 
-// Baggrundstråd: Scanner RFID-kort kontinuerligt med libnfc via SPI
 void scanningThread() {
     nfc_context* context = nullptr;
     nfc_device* pnd = nullptr;
-
     nfc_init(&context);
-    if (!context) {
-        std::cerr << "Kunne ikke initialisere libnfc\n";
-        return;
-    }
-
+    if (!context) return;
     pnd = nfc_open(context, nullptr);
     if (!pnd || nfc_initiator_init(pnd) < 0) {
-        std::cerr << "Kunne ikke åbne NFC-enhed eller starte initiator\n";
         if (pnd) nfc_close(pnd);
         nfc_exit(context);
         return;
     }
-
     const nfc_modulation mod[1] = { { NMT_ISO14443A, NBR_106 } };
     nfc_target target;
-
     while (scanningAktiv) {
         int res = nfc_initiator_poll_target(pnd, mod, 1, 2, 2, &target);
         if (res > 0) {
@@ -137,12 +101,10 @@ void scanningThread() {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
-
     nfc_close(pnd);
     nfc_exit(context);
 }
 
-// Hjælpefunktioner til filhåndtering
 void skrivTilFil(const std::string& filnavn, const std::string& data) {
     int fd = open(filnavn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd >= 0) {
@@ -179,72 +141,24 @@ void logBestilling(const std::string& valg) {
     }
 }
 
-std::string hentBestillinger() {
-    int fd = open("bestillinger.txt", O_RDONLY);
-    if (fd < 0) return "[]";
-
-    char buffer[8192];
-    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
-    close(fd);
-    if (bytesRead <= 0) return "[]";
-
-    buffer[bytesRead] = '\0';
-    std::istringstream stream(buffer);
-    std::string line;
-    std::vector<std::string> entries;
-
-    while (std::getline(stream, line)) {
-        if (!line.empty() && line.back() == ',') line.pop_back();
-        if (!line.empty()) entries.push_back(line);
-    }
-
-    std::ostringstream json;
-    json << "[";
-    for (size_t i = 0; i < entries.size(); ++i) {
-        json << entries[i];
-        if (i != entries.size() - 1) json << ",";
-    }
-    json << "]";
-    return json.str();
-}
-
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
-
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == 0) {
-        perror("Socket fejl");
-        exit(EXIT_FAILURE);
-    }
-
+    if (server_fd == 0) exit(EXIT_FAILURE);
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        perror("Bind fejl");
-        exit(EXIT_FAILURE);
-    }
-
-    if (listen(server_fd, 10) < 0) {
-        perror("Lyt fejl");
-        exit(EXIT_FAILURE);
-    }
-
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) exit(EXIT_FAILURE);
+    if (listen(server_fd, 10) < 0) exit(EXIT_FAILURE);
     std::cout << "Backend server kører på http://localhost:" << PORT << std::endl;
-
     std::thread t(scanningThread);
 
     char buffer[30000] = {0};
     while (true) {
         new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
-        if (new_socket < 0) {
-            perror("Accept fejl");
-            continue;
-        }
-
+        if (new_socket < 0) continue;
         memset(buffer, 0, sizeof(buffer));
         read(new_socket, buffer, sizeof(buffer));
         std::string request(buffer);
@@ -254,22 +168,13 @@ int main() {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 gemtValg = request.substr(bodyPos + 4);
-                if (gemtValg == "Te") {
-                    sendI2CCommand("mode:1");
-                    sendMotorCommand('1');
-                } else if (gemtValg == "Lille kaffe") {
-                    sendI2CCommand("mode:2");
-                    sendMotorCommand('2');
-                } else if (gemtValg == "Stor kaffe") {
-                    sendI2CCommand("mode:3");
-                    sendMotorCommand('3');
-                }
-
+                if (gemtValg == "Te") sendI2CCommand("mode:1");
+                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
+                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
                 skrivTilFil("valg.txt", gemtValg);
                 responseBody = "{\"status\":\"Valg gemt\"}";
             }
-        }
-        else if (request.find("GET /tjek-kort") != std::string::npos) {
+        } else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid;
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
@@ -278,17 +183,17 @@ int main() {
             uid = filtrerUID(uid);
             bool kortOK = (!uid.empty() && checkKort(uid));
             skrivTilFil("kort.txt", kortOK ? "1" : "0");
-
             if (uid.empty()) responseBody = "{\"kortOK\": false}";
             else if (!kortOK) responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
             else responseBody = "{\"kortOK\": true}";
-        }
-        else if (request.find("POST /bestil") != std::string::npos) {
+        } else if (request.find("POST /bestil") != std::string::npos) {
             std::string kortStatus = læsFraFil("kort.txt");
             std::string valg = læsFraFil("valg.txt");
-
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
+                if (valg == "Te") sendMotorCommand('1');
+                else if (valg == "Lille kaffe") sendMotorCommand('2');
+                else if (valg == "Stor kaffe") sendMotorCommand('3');
                 sendI2CCommand("s");
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
@@ -296,16 +201,13 @@ int main() {
             } else {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
-        }
-        else if (request.find("POST /annuller") != std::string::npos) {
+        } else if (request.find("POST /annuller") != std::string::npos) {
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
-        }
-        else if (request.find("GET /bestillinger") != std::string::npos) {
-            responseBody = hentBestillinger();
-        }
-        else {
+        } else if (request.find("GET /bestillinger") != std::string::npos) {
+            responseBody = læsFraFil("bestillinger.txt");
+        } else {
             responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
@@ -322,6 +224,5 @@ int main() {
 
     scanningAktiv = false;
     t.join();
-
     return 0;
 }
