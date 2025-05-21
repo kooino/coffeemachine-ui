@@ -161,7 +161,7 @@ int main() {
         if (new_socket < 0) continue;
         memset(buffer, 0, sizeof(buffer));
         read(new_socket, buffer, sizeof(buffer));
-        std::string request(buffer);
+        std::string request(request);
         std::string responseBody;
 
         if (request.find("POST /gem-valg") != std::string::npos) {
@@ -202,6 +202,7 @@ int main() {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         } else if (request.find("POST /annuller") != std::string::npos) {
+            sendMotorCommand('a');  // stop motor
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
@@ -221,7 +222,6 @@ int main() {
         send(new_socket, httpResponse.c_str(), httpResponse.size(), 0);
         close(new_socket);
     }
-
     scanningAktiv = false;
     t.join();
     return 0;
