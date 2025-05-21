@@ -17,7 +17,7 @@ function App() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(${API_BASE}/tjek-kort);
+        const res = await fetch(`${API_BASE}/tjek-kort`);
         if (!res.ok) throw new Error("Netværksfejl");
         const data = await res.json();
         setKortOK(data.kortOK || false);
@@ -38,7 +38,7 @@ function App() {
     }
     setFejl("");
     try {
-      const res = await fetch(${API_BASE}/gem-valg, {
+      const res = await fetch(`${API_BASE}/gem-valg`, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: valg,
@@ -66,7 +66,7 @@ function App() {
     setStatus("Brygger din drik...");
 
     try {
-      const res = await fetch(${API_BASE}/bestil, { method: "POST" });
+      const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
       if (!res.ok) throw new Error("Fejl ved bestil");
       const data = await res.json();
       if (data.status === "OK") {
@@ -89,7 +89,7 @@ function App() {
     if (aflyser) return;
     setAflyser(true);
     try {
-      const res = await fetch(${API_BASE}/annuller, { method: "POST" });
+      const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
       if (!res.ok) throw new Error("Fejl ved annuller");
       const data = await res.json();
       if (data.status === "Annulleret") {
