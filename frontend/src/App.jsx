@@ -51,7 +51,7 @@ function App() {
       } else {
         setFejl(data.error || "Kunne ikke gemme valg.");
       }
-    } catch (error) {
+    } catch {
       setFejl("Fejl ved valg.");
     }
   };
@@ -126,7 +126,7 @@ function App() {
           <option value="Lille kaffe">Lille kaffe</option>
           <option value="Te">Te</option>
         </select>
-        <button onClick={confirmValg} disabled={!valg}>
+        <button onClick={confirmValg} disabled={!valg || brygger || aflyser}>
           Bekræft valg
         </button>
 
@@ -136,7 +136,7 @@ function App() {
         <p>{kortOK ? "✅ Kort godkendt!" : "⌛ Venter på kort..."}</p>
 
         <h2>3. Start brygning</h2>
-        <button onClick={startBrygning} disabled={!kortOK || brygger}>
+        <button onClick={startBrygning} disabled={!kortOK || brygger || aflyser}>
           Start brygning
         </button>
         <button
