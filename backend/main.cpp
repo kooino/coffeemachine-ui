@@ -86,7 +86,7 @@ void scanningThread() {
         if (res > 0) {
             uint32_t uidNum = 0;
             for (size_t i = 0; i < target.nti.nai.szUidLen; i++) {
-                uidNum = (uidNum << 😎 | target.nti.nai.abtUid[i];
+                uidNum = (uidNum << 8) | target.nti.nai.abtUid[i];
             }
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
@@ -168,11 +168,18 @@ int main() {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 gemtValg = request.substr(bodyPos + 4);
-                if (gemtValg == "Te") sendI2CCommand("mode:1");
-                else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
-                else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
                 skrivTilFil("valg.txt", gemtValg);
-                responseBody = "{\"status\"😕"Valg gemt\"}";
+                if (gemtValg == "Te") {
+                    sendI2CCommand("mode:1");
+                    sendMotorCommand('1');
+                } else if (gemtValg == "Lille kaffe") {
+                    sendI2CCommand("mode:2");
+                    sendMotorCommand('2');
+                } else if (gemtValg == "Stor kaffe") {
+                    sendI2CCommand("mode:3");
+                    sendMotorCommand('3');
+                }
+                responseBody = "{\"status\":\"Valg gemt\"}";
             }
         } else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid;
@@ -191,24 +198,22 @@ int main() {
             std::string valg = læsFraFil("valg.txt");
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                if (valg == "Te") sendMotorCommand('1');
-                else if (valg == "Lille kaffe") sendMotorCommand('2');
-                else if (valg == "Stor kaffe") sendMotorCommand('3');
-                sendI2CCommand("s");
+                sendI2CCommand("s"); // stop pumpe efter bestilling
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
-                responseBody = "{\"status\"😕"OK\"}";
+                responseBody = "{\"status\":\"OK\"}";
             } else {
-                responseBody = "{\"error\"😕"Ugyldig anmodning\"}";
+                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         } else if (request.find("POST /annuller") != std::string::npos) {
+            sendMotorCommand('a'); // stop motoren
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            responseBody = "{\"status\"😕"Annulleret\"}";
+            responseBody = "{\"status\":\"Annulleret\"}";
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = læsFraFil("bestillinger.txt");
         } else {
-            responseBody = "{\"message\"😕"Kaffeautomat API\"}";
+            responseBody = "{\"message\":\"Kaffeautomat API\"}";
         }
 
         std::string httpResponse =
