@@ -198,7 +198,7 @@ int main() {
             std::string valg = læsFraFil("valg.txt");
             if (kortStatus == "1" && !valg.empty()) {
                 logBestilling(valg);
-                sendI2CCommand("s"); // stop pumpe efter bestilling
+                sendI2CCommand("s"); // stop pumpen efter bestilling
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
                 responseBody = "{\"status\":\"OK\"}";
@@ -206,9 +206,8 @@ int main() {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         } else if (request.find("POST /annuller") != std::string::npos) {
-            // Stop motor og pumpe ved afbryd
-            sendMotorCommand('a');
-            sendI2CCommand("a");  // antaget 'a' stopper pumpen
+            sendMotorCommand('a');  // stop motoren
+            sendI2CCommand("a");     // stop pumpen (brug 'a' som stop-kommando)
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
