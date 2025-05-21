@@ -86,7 +86,7 @@ void scanningThread() {
         if (res > 0) {
             uint32_t uidNum = 0;
             for (size_t i = 0; i < target.nti.nai.szUidLen; i++) {
-                uidNum = (uidNum << 8) | target.nti.nai.abtUid[i];
+                uidNum = (uidNum << 😎 | target.nti.nai.abtUid[i];
             }
             {
                 std::lock_guard<std::mutex> lock(uidMutex);
@@ -161,7 +161,7 @@ int main() {
         if (new_socket < 0) continue;
         memset(buffer, 0, sizeof(buffer));
         read(new_socket, buffer, sizeof(buffer));
-        std::string request(request);
+        std::string request(buffer);
         std::string responseBody;
 
         if (request.find("POST /gem-valg") != std::string::npos) {
@@ -172,7 +172,7 @@ int main() {
                 else if (gemtValg == "Lille kaffe") sendI2CCommand("mode:2");
                 else if (gemtValg == "Stor kaffe") sendI2CCommand("mode:3");
                 skrivTilFil("valg.txt", gemtValg);
-                responseBody = "{\"status\":\"Valg gemt\"}";
+                responseBody = "{\"status\"😕"Valg gemt\"}";
             }
         } else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid;
@@ -197,19 +197,18 @@ int main() {
                 sendI2CCommand("s");
                 skrivTilFil("kort.txt", "0");
                 skrivTilFil("valg.txt", "");
-                responseBody = "{\"status\":\"OK\"}";
+                responseBody = "{\"status\"😕"OK\"}";
             } else {
-                responseBody = "{\"error\":\"Ugyldig anmodning\"}";
+                responseBody = "{\"error\"😕"Ugyldig anmodning\"}";
             }
         } else if (request.find("POST /annuller") != std::string::npos) {
-            sendMotorCommand('a');  // stop motor
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
-            responseBody = "{\"status\":\"Annulleret\"}";
+            responseBody = "{\"status\"😕"Annulleret\"}";
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             responseBody = læsFraFil("bestillinger.txt");
         } else {
-            responseBody = "{\"message\":\"Kaffeautomat API\"}";
+            responseBody = "{\"message\"😕"Kaffeautomat API\"}";
         }
 
         std::string httpResponse =
@@ -222,6 +221,7 @@ int main() {
         send(new_socket, httpResponse.c_str(), httpResponse.size(), 0);
         close(new_socket);
     }
+
     scanningAktiv = false;
     t.join();
     return 0;
