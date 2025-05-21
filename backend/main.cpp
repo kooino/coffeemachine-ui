@@ -206,7 +206,9 @@ int main() {
                 responseBody = "{\"error\":\"Ugyldig anmodning\"}";
             }
         } else if (request.find("POST /annuller") != std::string::npos) {
-            sendMotorCommand('a'); // stop motoren ved afbryd
+            // Stop motor og pumpe ved afbryd
+            sendMotorCommand('a');
+            sendI2CCommand("a");  // antaget 'a' stopper pumpen
             skrivTilFil("kort.txt", "0");
             skrivTilFil("valg.txt", "");
             responseBody = "{\"status\":\"Annulleret\"}";
