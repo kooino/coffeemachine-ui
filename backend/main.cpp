@@ -25,12 +25,12 @@ std::mutex logMutex;
 std::mutex uidMutex;
 
 std::string senesteUID;
+std::string senesteValg;
 std::atomic<bool> scanningAktiv(true);
 
-int storeKopper = 0;  // tæller store kopper kaffe
-int lilleKopper = 0;  // tæller små kopper kaffe + te
+int storeKopper = 0;
+int lilleKopper = 0;
 
-// Send besked til service.txt
 void skrivServiceBesked(const std::string& besked) {
     int fd = open("service.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd != -1) {
@@ -164,9 +164,9 @@ int main() {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 std::string valg = request.substr(bodyPos + 4);
+                senesteValg = valg;
                 logBestilling(valg);
 
-                // Send pumpe og motor kommandoer og tælling
                 if (valg == "Te") {
                     sendI2CCommand("mode:1");
                     sendMotorCommand('1');
@@ -181,7 +181,6 @@ int main() {
                     storeKopper++;
                 }
 
-                // Tjek service beskeder
                 if (storeKopper >= 3) {
                     skrivServiceBesked("Mangel på kaffebønner: 3 store kopper lavet.");
                     storeKopper = 0;
@@ -191,8 +190,19 @@ int main() {
                     lilleKopper = 0;
                 }
 
-                responseBody = "{\"status\":\"Valg gemt\"}";
+                responseBody = "{\"status\": \"Valg gemt\"}";
             }
+
+        } else if (request.find("POST /bestil") != std::string::npos) {
+            sendI2CCommand("s");
+            sendMotorCommand('s');
+            responseBody = "{\"status\": \"OK\"}";
+
+        } else if (request.find("POST /annuller") != std::string::npos) {
+            sendMotorCommand('a');
+            sendI2CCommand("a");
+            responseBody = "{\"status\": \"Annulleret\"}";
+
         } else if (request.find("GET /tjek-kort") != std::string::npos) {
             std::string uid;
             {
@@ -204,16 +214,7 @@ int main() {
             if (uid.empty()) responseBody = "{\"kortOK\": false}";
             else if (!kortOK) responseBody = "{\"kortOK\": false, \"error\": \"Forkert kort\"}";
             else responseBody = "{\"kortOK\": true}";
-        } else if (request.find("POST /bestil") != std::string::npos) {
-            // Ved bestilling: stop pumpe og motor (send stop-kommandoer)
-            sendI2CCommand("s");
-            sendMotorCommand('s');
-            responseBody = "{\"status\":\"OK\"}";
-        } else if (request.find("POST /annuller") != std::string::npos) {
-            // Stop pumpe og motor
-            sendMotorCommand('a');
-            sendI2CCommand("a");
-            responseBody = "{\"status\":\"Annulleret\"}";
+
         } else if (request.find("GET /bestillinger") != std::string::npos) {
             int fd = open("bestillinger.txt", O_RDONLY);
             if (fd >= 0) {
@@ -229,8 +230,9 @@ int main() {
             } else {
                 responseBody = "[]";
             }
+
         } else {
-            responseBody = "{\"message\":\"Kaffeautomat API\"}";
+            responseBody = "{\"message\": \"Kaffeautomat API\"}";
         }
 
         std::string httpResponse =
