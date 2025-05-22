@@ -13,7 +13,6 @@ function App() {
 
   const API_BASE = "http://localhost:5000";
 
-  // Poll kortstatus hvert sekund
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -22,7 +21,7 @@ function App() {
         const data = await res.json();
         setKortOK(data.kortOK || false);
         setFejl(data.error || "");
-      } catch (err) {
+      } catch {
         setFejl("Kan ikke hente kortstatus");
         setKortOK(false);
       }
@@ -43,7 +42,6 @@ function App() {
         headers: { "Content-Type": "text/plain" },
         body: valg,
       });
-      if (!res.ok) throw new Error("Fejl ved gem-valg");
       const data = await res.json();
       if (data.status === "Valg gemt") {
         setShowPopup(true);
@@ -51,7 +49,7 @@ function App() {
       } else {
         setFejl(data.error || "Kunne ikke gemme valg.");
       }
-    } catch (error) {
+    } catch {
       setFejl("Fejl ved valg.");
     }
   };
@@ -61,17 +59,17 @@ function App() {
       setFejl("Kort ikke godkendt!");
       return;
     }
+
     setFejl("");
     setBrygger(true);
     setStatus("Brygger din drik...");
 
     try {
       const res = await fetch(`${API_BASE}/bestil`, { method: "POST" });
-      if (!res.ok) throw new Error("Fejl ved bestil");
       const data = await res.json();
       if (data.status === "OK") {
         setStatus("☕ Din drik er klar! Tag din kop.");
-        setTimeout(() => setStatus(""), 4000);
+        setTimeout(() => setStatus(""), 5000);
       } else {
         setFejl(data.error || "Fejl ved brygning.");
         setStatus("");
@@ -90,7 +88,6 @@ function App() {
     setAflyser(true);
     try {
       const res = await fetch(`${API_BASE}/annuller`, { method: "POST" });
-      if (!res.ok) throw new Error("Fejl ved annuller");
       const data = await res.json();
       if (data.status === "Annulleret") {
         setStatus("Bestilling annulleret.");
@@ -147,8 +144,16 @@ function App() {
           Afbryd
         </button>
 
-        {status && <div className="status-box"><strong>{status}</strong></div>}
-        {fejl && <div className="error-box"><strong>{fejl}</strong></div>}
+        {status && (
+          <div className="status-box">
+            <strong>{status}</strong>
+          </div>
+        )}
+        {fejl && (
+          <div className="error-box">
+            <strong>{fejl}</strong>
+          </div>
+        )}
       </div>
     </div>
   );
