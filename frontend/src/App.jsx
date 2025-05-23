@@ -111,7 +111,7 @@ function App() {
       <div className="header">
         <h1>☕ Velkommen til Kaffeautomaten</h1>
         <p className="subheading">
-          Scan dit kort og vælg med stil – snart kigger IDO Service forbi.
+          Scan dit kort og vælg med stil – snart kigger Gruppe 6 forbi.
         </p>
       </div>
 
