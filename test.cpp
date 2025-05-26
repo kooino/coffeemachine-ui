@@ -1,38 +1,48 @@
-
+#include <nfc/nfc.h>
 #include <iostream>
-#include <unistd.h>
-#include <fcntl.h>
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
-#include <cstring>
-
-#define I2C_DEVICE "/dev/i2c-1"
-#define SLAVE_ADDR 0x08
+#include <iomanip>
 
 int main() {
-    int file;
-    const char* message = "Hej fra RPi";
+    nfc_context *context;
+    nfc_device *pnd;
+    nfc_target nt;
 
-    if ((file = open(I2C_DEVICE, O_RDWR)) < 0) {
-        perror("Fejl ved åbning af I2C-enhed");
+    nfc_init(&context);
+    if (context == nullptr) {
+        std::cerr << "Libnfc init fejl" << std::endl;
         return 1;
     }
 
-    if (ioctl(file, I2C_SLAVE, SLAVE_ADDR) < 0) {
-        perror("Fejl ved opsætning af slave-adresse");
-        close(file);
+    pnd = nfc_open(context, nullptr);
+    if (pnd == nullptr) {
+        std::cerr << "Ingen NFC-enhed fundet" << std::endl;
+        nfc_exit(context);
         return 1;
     }
+
+    if (nfc_initiator_init(pnd) < 0) {
+        std::cerr << "Init fejl" << std::endl;
+        nfc_close(pnd);
+        nfc_exit(context);
+        return 1;
+    }
+
+    std::cout << "Scan kort med PN532..." << std::endl;
+
+    const nfc_modulation mod = { NMT_ISO14443A, NBR_106 };
 
     while (true) {
-        if (write(file, message, strlen(message)) != (ssize_t)strlen(message)) {
-            perror("Fejl ved skrivning til Arduino");
-        } else {
-            std::cout << "✅ Sendt: " << message << std::endl;
+        if (nfc_initiator_poll_target(pnd, &mod, 1, 2, 2, &nt) > 0) {
+            std::cout << "UID: ";
+            for (size_t i = 0; i < nt.nti.nai.szUidLen; i++) {
+                std::cout << std::hex << std::setw(2) << std::setfill('0')
+                          << (int)nt.nti.nai.abtUid[i] << " ";
+            }
+            std::cout << std::endl;
         }
-        sleep(5);
     }
 
-    close(file);
+    nfc_close(pnd);
+    nfc_exit(context);
     return 0;
 }
